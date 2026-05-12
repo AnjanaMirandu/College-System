@@ -747,11 +747,10 @@ small {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface-strong);
+  width: 18px;
+  height: 18px;
+  border: 0;
+  background: transparent;
 }
 
 .admin-slot-checkbox input {
