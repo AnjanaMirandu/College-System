@@ -18,9 +18,9 @@ const emptyTeacherForm = {
 
 const emptySlotForm = {
   teacherId: '',
-  startTime: '12:00',
-  endTime: '19:00',
-  numSlots: 42,
+  startTime: '',
+  endTime: '',
+  numSlots: '',
 };
 
 const meetingWindow = {
@@ -401,6 +401,11 @@ const AdminDashboardPage = () => {
     const { name, value } = e.target;
 
     if (name === 'numSlots') {
+      if (value === '') {
+        setSlotForm((prev) => ({ ...prev, numSlots: '', endTime: '' }));
+        return;
+      }
+
       const numSlots = Number(value) || 0;
       setSlotForm((prev) => {
         const endTime = computeEndTime(prev.startTime, numSlots);
