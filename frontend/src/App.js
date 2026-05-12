@@ -45,7 +45,7 @@ function App() {
           <Route path="/teachers/:teacherId" element={<RequireParent><TeacherSlotsPage /></RequireParent>} />
           <Route path="/book" element={<RequireParent><BookingFormPage /></RequireParent>} />
           <Route path="/book/:slotId" element={<RequireParent><BookingFormPage /></RequireParent>} />
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<Navigate to="/teacher/login" replace />} />
           <Route path="/teacher/login" element={<LoginPage />} />
           <Route path="/teacher/register" element={<TeacherRegisterPage />} />
           <Route path="/parent/login" element={<ParentLoginPage />} />
