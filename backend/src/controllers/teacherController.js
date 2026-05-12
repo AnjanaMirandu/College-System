@@ -6,6 +6,23 @@ const meetingWindow = {
   maxSlots: 42,
 };
 
+const getActiveRegistrationsForSlots = async (slotIds) => {
+  if (!slotIds.length) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('registrations')
+    .select('id, slot_id, status')
+    .in('slot_id', slotIds);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []).filter((registration) => registration.status !== 'cancelled');
+};
+
 const generateSlots = async (req, res) => {
   if (!req.user || req.user.type !== 'teacher') {
     return res.status(403).json({ message: 'Teacher access required' });
@@ -155,7 +172,84 @@ const getSlots = async (req, res) => {
     return res.status(500).json({ message: 'Error fetching slots' });
   }
 
-  res.json(data);
+  try {
+    const activeRegistrations = await getActiveRegistrationsForSlots((data || []).map((slot) => slot.id));
+    const registeredSlotIds = new Set(activeRegistrations.map((registration) => registration.slot_id));
+    const slots = (data || []).map((slot) => {
+      const hasRegistration = registeredSlotIds.has(slot.id);
+      const availabilityStatus = hasRegistration ? 'booked' : (slot.is_booked ? 'busy' : 'available');
+
+      return {
+        ...slot,
+        has_registration: hasRegistration,
+        availability_status: availabilityStatus,
+      };
+    });
+
+    res.json(slots);
+  } catch (registrationError) {
+    res.status(500).json({ message: 'Error fetching slot registrations' });
+  }
 };
 
-module.exports = { generateSlots, getRegistrations, cancelRegistration, getSlots };
+const updateSlotAvailability = async (req, res) => {
+  if (!req.user || req.user.type !== 'teacher') {
+    return res.status(403).json({ message: 'Teacher access required' });
+  }
+
+  const teacherId = Number(req.user.id);
+  const slotId = Number(req.params.id);
+  const unavailable = Boolean(req.body?.unavailable);
+
+  if (!teacherId || Number.isNaN(teacherId) || !slotId || Number.isNaN(slotId)) {
+    return res.status(400).json({ message: 'Invalid teacher or slot ID.' });
+  }
+
+  const { data: slot, error: slotError } = await supabase
+    .from('slots')
+    .select('id, teacher_id, is_booked')
+    .eq('id', slotId)
+    .eq('teacher_id', teacherId)
+    .maybeSingle();
+
+  if (slotError) {
+    return res.status(500).json({ message: 'Error checking slot availability' });
+  }
+  if (!slot) {
+    return res.status(404).json({ message: 'Slot not found' });
+  }
+
+  let activeRegistrations = [];
+  try {
+    activeRegistrations = await getActiveRegistrationsForSlots([slotId]);
+  } catch (registrationError) {
+    return res.status(500).json({ message: 'Error checking slot registrations' });
+  }
+
+  if (activeRegistrations.length) {
+    return res.status(400).json({ message: 'Booked slots cannot be marked as busy or break.' });
+  }
+
+  const { data, error } = await supabase
+    .from('slots')
+    .update({ is_booked: unavailable })
+    .eq('id', slotId)
+    .eq('teacher_id', teacherId)
+    .select()
+    .single();
+
+  if (error) {
+    return res.status(500).json({ message: 'Error updating slot availability' });
+  }
+
+  res.json({
+    message: unavailable ? 'Slot marked as busy or break' : 'Slot marked as available',
+    slot: {
+      ...data,
+      has_registration: false,
+      availability_status: unavailable ? 'busy' : 'available',
+    },
+  });
+};
+
+module.exports = { generateSlots, getRegistrations, cancelRegistration, getSlots, updateSlotAvailability };

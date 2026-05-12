@@ -118,7 +118,10 @@
     "slotsForDate": "Vietos {{date}}",
     "loading": "Įkeliama...",
     "booked": "Užimta",
+    "busy": "Užimta / pertrauka",
     "available": "Laisva",
+    "markBusyBreak": "Pažymėti kaip užimtą / pertrauką",
+    "markAvailable": "Pažymėti kaip laisvą",
     "noSlotsCreated": "Šiai datai dar nesukurta vietų. Sukurkite žemiau!",
     "createNewSlots": "Kurti naujas vietas",
     "selectedDateFromCalendar": "Data pasirinkta iš kalendoriaus: {{date}}",
@@ -135,10 +138,13 @@
       "endMustBeAfterStart": "Pabaigos laikas turi būti vėlesnis už pradžios laiką.",
       "maxSlots": "Maksimaliai leidžiamos 42 vietos. Sumažinkite laiko intervalą.",
       "outsideMeetingWindow": "Susitikimus galima kurti tik nuo 12:00 iki 19:00.",
-      "generationFailed": "Klaida generuojant vietas"
+      "generationFailed": "Klaida generuojant vietas",
+      "availabilityUpdateFailed": "Klaida atnaujinant laiko prieinamumą"
     },
     "success": {
-      "generated": "Vietos sėkmingai sugeneruotos"
+      "generated": "Vietos sėkmingai sugeneruotos",
+      "markedBusy": "Laikas pažymėtas kaip užimtas / pertrauka",
+      "markedAvailable": "Laikas pažymėtas kaip laisvas"
     }
   },
   "teacherSlots": {
@@ -223,7 +229,7 @@
     "databaseSetupRequired": "Reikia paruo?ti duomen? baz?: paleiskite backend/db/schema.sql Supabase aplinkoje, kad ?jungtum?te ?? valdikl?.",
     "openToParents": "Atidaryta t?vams",
     "closedToParents": "U?daryta t?vams",
-    "registrationPeriodHelp": "T?vai gali pasirinkti ir rezervuoti laikus tik tada, kai ?is laikotarpis atidarytas ir dabartinis laikas patenka ? i?saugot? dat? interval?.",
+    "registrationPeriodHelp": "Šis nustatymas valdo, kada tėvai gali peržiūrėti ir rezervuoti laikus. Jis nenustato susitikimo datos; tėvai gali rezervuoti bet kuriuos būsimus mokytojų ar administratoriaus sukurtus laikus, kol laikotarpis yra atidarytas.",
     "createConsultationSlots": "Kurti konsultacij? laikus",
     "createConsultationSlotsSubtitle": "Pasirinkite mokytoj? ir kalendoriuje kurkite 10 minu?i? susitikimus nuo 12:00 iki 19:00.",
     "teacher": "Mokytojas",

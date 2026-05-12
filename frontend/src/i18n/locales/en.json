@@ -118,7 +118,10 @@
     "slotsForDate": "Slots for {{date}}",
     "loading": "Loading...",
     "booked": "Booked",
+    "busy": "Busy/Break",
     "available": "Available",
+    "markBusyBreak": "Mark Busy/Break",
+    "markAvailable": "Mark Available",
     "noSlotsCreated": "No slots created for this date. Create some below!",
     "createNewSlots": "Create New Slots",
     "selectedDateFromCalendar": "Date selected from calendar: {{date}}",
@@ -135,10 +138,13 @@
       "endMustBeAfterStart": "End time must be after start time.",
       "maxSlots": "Maximum 42 slots allowed. Reduce the time window.",
       "outsideMeetingWindow": "Meetings can only be created between 12:00 and 19:00.",
-      "generationFailed": "Error generating slots"
+      "generationFailed": "Error generating slots",
+      "availabilityUpdateFailed": "Error updating slot availability"
     },
     "success": {
-      "generated": "Slots generated successfully"
+      "generated": "Slots generated successfully",
+      "markedBusy": "Slot marked as Busy/Break",
+      "markedAvailable": "Slot marked as Available"
     }
   },
   "teacherSlots": {
@@ -207,7 +213,7 @@
     "databaseSetupRequired": "Database setup required: run backend/db/schema.sql in Supabase to enable this control.",
     "openToParents": "Open to parents",
     "closedToParents": "Closed to parents",
-    "registrationPeriodHelp": "Parents can only select and book slots when this period is open and the current time is inside the saved date range.",
+    "registrationPeriodHelp": "This controls when parents are allowed to browse and book. It does not set the meeting date; parents can book any future slots that teachers/admins have created while this period is open.",
     "createConsultationSlots": "Create Consultation Slots",
     "createConsultationSlotsSubtitle": "Choose a teacher and use the calendar workflow to create 10-minute appointments between 12:00 and 19:00.",
     "teacher": "Teacher",

@@ -195,6 +195,7 @@
 }
 
 .slot-time {
+  flex: 1 1 auto;
   font-weight: 700;
   color: #102338;
   font-size: 1rem;
@@ -215,6 +216,19 @@
 .slot-status.booked {
   background: rgba(214, 171, 43, 0.22);
   color: #8f6c10;
+}
+
+.slot-status.busy {
+  background: rgba(65, 83, 102, 0.15);
+  color: #415366;
+}
+
+.slot-item .button-secondary {
+  width: auto;
+  min-height: 34px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  white-space: nowrap;
 }
 
 .no-slots {

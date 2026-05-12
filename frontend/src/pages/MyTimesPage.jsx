@@ -147,6 +147,26 @@ const MyTimesPage = () => {
     }
   };
 
+  const getSlotStatusKey = (slot) => {
+    if (slot.availability_status) {
+      return slot.availability_status;
+    }
+    return slot.is_booked ? 'booked' : 'available';
+  };
+
+  const toggleSlotAvailability = async (slot) => {
+    const status = getSlotStatusKey(slot);
+    const unavailable = status === 'available';
+
+    try {
+      await api.patch(`/teacher/slots/${slot.id}/availability`, { unavailable });
+      alert(unavailable ? t('myTimes.success.markedBusy') : t('myTimes.success.markedAvailable'));
+      fetchTeacherSlots();
+    } catch (error) {
+      alert(error?.response?.data?.message || t('myTimes.errors.availabilityUpdateFailed'));
+    }
+  };
+
   const getDatesWithSlots = () => {
     return slots.map(slot => formatSlotDateOnly(slot.start_time));
   };
@@ -199,18 +219,32 @@ const MyTimesPage = () => {
               <p>{t('myTimes.loading')}</p>
             ) : selectedDateSlots.length > 0 ? (
               <div className="slots-list">
-                {selectedDateSlots.map((slot, idx) => (
-                  <div key={idx} className="slot-item">
-                    <div className="slot-time">
-                      {formatSlotTime(slot.start_time)}
-                      {' - '}
-                      {formatSlotTime(slot.end_time)}
+                {selectedDateSlots.map((slot) => {
+                  const status = getSlotStatusKey(slot);
+                  const canToggleAvailability = status !== 'booked';
+
+                  return (
+                    <div key={slot.id} className="slot-item">
+                      <div className="slot-time">
+                        {formatSlotTime(slot.start_time)}
+                        {' - '}
+                        {formatSlotTime(slot.end_time)}
+                      </div>
+                      <div className={`slot-status ${status}`}>
+                        {t(`myTimes.${status}`)}
+                      </div>
+                      {canToggleAvailability && (
+                        <button
+                          className="button-secondary"
+                          type="button"
+                          onClick={() => toggleSlotAvailability(slot)}
+                        >
+                          {status === 'available' ? t('myTimes.markBusyBreak') : t('myTimes.markAvailable')}
+                        </button>
+                      )}
                     </div>
-                    <div className={`slot-status ${slot.is_booked ? 'booked' : 'available'}`}>
-                      {slot.is_booked ? t('myTimes.booked') : t('myTimes.available')}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="no-slots">{t('myTimes.noSlotsCreated')}</p>
