@@ -28,14 +28,16 @@ const Navbar = () => {
       </div>
       <div className="nav-group">
         <Link to="/">{t('common.home')}</Link>
-        <Link to="/teachers">{t('common.teachers')}</Link>
         {auth.token ? (
           auth.userType === 'teacher' ? (
             <Link to="/teacher/dashboard">{t('common.dashboard')}</Link>
           ) : auth.userType === 'admin' ? (
             <Link to="/admin/dashboard">{t('common.adminDashboard')}</Link>
           ) : (
-            <Link to="/parent/dashboard">{t('common.myBookings')}</Link>
+            <>
+              <Link to="/teachers">{t('common.teachers')}</Link>
+              <Link to="/parent/dashboard">{t('common.myBookings')}</Link>
+            </>
           )
         ) : (
           <>

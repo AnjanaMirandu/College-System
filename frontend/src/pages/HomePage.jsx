@@ -4,6 +4,9 @@ import heroImage from '../assets/admiral-hero-campus.png';
 
 const HomePage = () => {
   const { t } = useTranslation();
+  const userType = localStorage.getItem('userType');
+  const canBrowseTeachers = !userType || userType === 'parent';
+
   return (
     <div className="App">
       <Navbar />
@@ -24,7 +27,9 @@ const HomePage = () => {
               {t('home.heroDescription')}
             </p>
             <div className="hero-actions">
-              <a className="button-primary" href="/teachers">{t('home.browseTeachers')}</a>
+              {canBrowseTeachers && (
+                <a className="button-primary" href="/teachers">{t('home.browseTeachers')}</a>
+              )}
               <div className="hero-login-actions">
                 <a className="button-secondary" href="/teacher/login">{t('common.teacherLogin')}</a>
                 <a className="button-secondary" href="/parent/login">{t('common.parentLogin')}</a>

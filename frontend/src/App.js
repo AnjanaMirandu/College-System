@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import TeachersPage from './pages/TeachersPage';
 import TeacherSlotsPage from './pages/TeacherSlotsPage';
@@ -14,16 +14,37 @@ import ParentDashboardPage from './pages/ParentDashboardPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 
+const getFallbackPath = (userType) => {
+  if (userType === 'teacher') {
+    return '/teacher/dashboard';
+  }
+  if (userType === 'admin') {
+    return '/admin/dashboard';
+  }
+  return '/parent/login';
+};
+
+const RequireParent = ({ children }) => {
+  const token = localStorage.getItem('token');
+  const userType = localStorage.getItem('userType');
+
+  if (!token || userType !== 'parent') {
+    return <Navigate to={getFallbackPath(userType)} replace />;
+  }
+
+  return children;
+};
+
 function App() {
   return (
     <Router>
       <div className="App">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/teachers" element={<TeachersPage />} />
-          <Route path="/teachers/:teacherId" element={<TeacherSlotsPage />} />
-          <Route path="/book" element={<BookingFormPage />} />
-          <Route path="/book/:slotId" element={<BookingFormPage />} />
+          <Route path="/teachers" element={<RequireParent><TeachersPage /></RequireParent>} />
+          <Route path="/teachers/:teacherId" element={<RequireParent><TeacherSlotsPage /></RequireParent>} />
+          <Route path="/book" element={<RequireParent><BookingFormPage /></RequireParent>} />
+          <Route path="/book/:slotId" element={<RequireParent><BookingFormPage /></RequireParent>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/teacher/register" element={<TeacherRegisterPage />} />
           <Route path="/parent/login" element={<ParentLoginPage />} />
