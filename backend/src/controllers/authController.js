@@ -42,6 +42,11 @@ const buildAuthResponse = (user, type) => {
   };
 };
 
+const isMissingParentChildColumns = (error) => (
+  error?.message?.includes("Could not find the 'child_name' column")
+  || error?.message?.includes("Could not find the 'child_class' column")
+);
+
 const loginTeacher = async (req, res) => {
   const { email, password } = req.body;
   const { data: teacher, error } = await supabase
@@ -142,17 +147,42 @@ const registerParent = async (req, res) => {
   }
 
   const password_hash = await bcrypt.hash(password, 10);
-  const { data, error } = await supabase
+  const parentPayload = {
+    name,
+    email,
+    password_hash,
+    child_name: childName,
+    child_class: childClass,
+  };
+
+  let { data, error } = await supabase
     .from('parents')
-    .insert([{
+    .insert([parentPayload])
+    .select()
+    .single();
+
+  if (isMissingParentChildColumns(error)) {
+    const fallbackPayload = {
       name,
       email,
       password_hash,
-      child_name: childName,
-      child_class: childClass,
-    }])
-    .select()
-    .single();
+    };
+
+    const fallbackResult = await supabase
+      .from('parents')
+      .insert([fallbackPayload])
+      .select()
+      .single();
+
+    data = fallbackResult.data
+      ? {
+        ...fallbackResult.data,
+        child_name: childName,
+        child_class: childClass,
+      }
+      : null;
+    error = fallbackResult.error;
+  }
 
   if (error || !data) {
     return res.status(500).json({ message: error?.message || 'Unable to create parent account' });
