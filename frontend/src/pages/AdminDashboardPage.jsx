@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Calendar from 'react-calendar';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
@@ -35,8 +36,8 @@ const emptyRegistrationSettings = {
   is_active_now: false,
 };
 
-const formatTeacherOption = (teacher) => (
-  `${teacher.name} - ${teacher.subject || 'Subject not set'} - Room ${teacher.room || 'not set'}`
+const formatTeacherOption = (teacher, t) => (
+  `${teacher.name} - ${teacher.subject || t('admin.subjectNotSet')} - ${t('admin.room')} ${teacher.room || t('admin.notSet')}`
 );
 
 const toDateTimeLocal = (value) => {
@@ -109,6 +110,7 @@ const TeacherSearchPicker = ({
   onFocus,
   onSelect,
   onClose,
+  t,
 }) => {
   const pickerRef = useRef(null);
   const query = searchValue.trim().toLowerCase();
@@ -156,12 +158,12 @@ const TeacherSearchPicker = ({
         value={searchValue}
         onChange={(e) => onSearchChange(e.target.value)}
         onFocus={onFocus}
-        placeholder="Search teacher by name, subject, room, or email"
+        placeholder={t('admin.searchTeacherPlaceholder')}
         autoComplete="off"
         required
       />
       {selectedTeacher && (
-        <small>Selected: {formatTeacherOption(selectedTeacher)}</small>
+        <small>{t('admin.selected')}: {formatTeacherOption(selectedTeacher, t)}</small>
       )}
       {isOpen && (
         <div className="teacher-search-results">
@@ -174,11 +176,11 @@ const TeacherSearchPicker = ({
                 onClick={() => onSelect(teacher)}
               >
                 <strong>{teacher.name}</strong>
-                <span>{teacher.subject || 'Subject not set'} · Room {teacher.room || 'not set'}</span>
+                <span>{teacher.subject || t('admin.subjectNotSet')} · {t('admin.room')} {teacher.room || t('admin.notSet')}</span>
               </button>
             ))
           ) : (
-            <span className="teacher-search-empty">No teacher found</span>
+            <span className="teacher-search-empty">{t('admin.noTeacherFound')}</span>
           )}
         </div>
       )}
@@ -187,6 +189,7 @@ const TeacherSearchPicker = ({
 };
 
 const AdminDashboardPage = () => {
+  const { t } = useTranslation();
   const [data, setData] = useState({
     summary: { teachers: 0, parents: 0, slots: 0, registrations: 0 },
     teachers: [],
@@ -238,13 +241,13 @@ const AdminDashboardPage = () => {
       setLastUpdated(new Date().toLocaleTimeString());
       setError('');
     } catch (err) {
-      const message = err?.response?.data?.message || 'Unable to load admin dashboard';
+      const message = err?.response?.data?.message || t('admin.unableLoadDashboard');
       setError(message);
       if (err?.response?.status === 401 || err?.response?.status === 403) {
         navigate('/admin/login');
       }
     }
-  }, [navigate]);
+  }, [navigate, t]);
 
   useEffect(() => {
     loadDashboard();
@@ -257,13 +260,13 @@ const AdminDashboardPage = () => {
 
     const selectedTeacher = data.teachers.find((teacher) => String(teacher.id) === String(slotForm.teacherId));
     if (selectedTeacher) {
-      setSlotTeacherSearch(formatTeacherOption(selectedTeacher));
+      setSlotTeacherSearch(formatTeacherOption(selectedTeacher, t));
       return;
     }
 
     setSlotForm((prev) => ({ ...prev, teacherId: '' }));
     setSlotTeacherSearch('');
-  }, [data.teachers, slotForm.teacherId]);
+  }, [data.teachers, slotForm.teacherId, t]);
 
   useEffect(() => {
     const handleFocus = () => {
@@ -385,7 +388,7 @@ const AdminDashboardPage = () => {
       }
       return result;
     } catch (err) {
-      window.alert(err?.response?.data?.message || 'Unable to complete admin action');
+      window.alert(err?.response?.data?.message || t('admin.unableCompleteAction'));
       return null;
     }
   };
@@ -438,7 +441,7 @@ const AdminDashboardPage = () => {
   const handleSlotTeacherSearchChange = (value) => {
     setSlotTeacherSearch(value);
     const selectedTeacher = data.teachers.find((teacher) => String(teacher.id) === String(slotForm.teacherId));
-    const selectedTeacherLabel = selectedTeacher ? formatTeacherOption(selectedTeacher) : '';
+    const selectedTeacherLabel = selectedTeacher ? formatTeacherOption(selectedTeacher, t) : '';
 
     if (!value.trim() || value !== selectedTeacherLabel) {
       setSlotForm((prev) => ({ ...prev, teacherId: '' }));
@@ -447,7 +450,7 @@ const AdminDashboardPage = () => {
 
   const handleSlotTeacherSelect = (teacher) => {
     setSlotForm((prev) => ({ ...prev, teacherId: String(teacher.id) }));
-    setSlotTeacherSearch(formatTeacherOption(teacher));
+    setSlotTeacherSearch(formatTeacherOption(teacher, t));
     setActiveTeacherPicker('');
   };
 
@@ -463,7 +466,7 @@ const AdminDashboardPage = () => {
     e.preventDefault();
     const result = await runAction(
       () => api.post('/admin/teachers', teacherForm),
-      'Teacher created'
+      t('admin.teacherCreated')
     );
 
     if (result) {
@@ -475,7 +478,7 @@ const AdminDashboardPage = () => {
     e.preventDefault();
     await runAction(
       () => api.patch('/admin/registration-settings', registrationForm),
-      'Registration settings updated'
+      t('admin.registrationSettingsUpdated')
     );
   };
 
@@ -483,17 +486,17 @@ const AdminDashboardPage = () => {
     e.preventDefault();
 
     if (!slotForm.teacherId) {
-      window.alert('Select the teacher you want to create slots for.');
+      window.alert(t('admin.selectTeacherForSlots'));
       return;
     }
 
     if (slotForm.startTime < meetingWindow.start || slotForm.endTime > meetingWindow.end) {
-      window.alert('Meetings can only be created between 12:00 and 19:00.');
+      window.alert(t('admin.outsideMeetingWindow'));
       return;
     }
 
     if (slotForm.numSlots <= 0 || slotForm.numSlots > meetingWindow.maxSlots) {
-      window.alert(`Create between 1 and ${meetingWindow.maxSlots} slots.`);
+      window.alert(t('admin.createBetweenSlots', { max: meetingWindow.maxSlots }));
       return;
     }
 
@@ -504,7 +507,7 @@ const AdminDashboardPage = () => {
         startTime: slotForm.startTime,
         endTime: slotForm.endTime,
       }),
-      'Slots generated'
+      t('admin.slotsGenerated')
     );
 
     if (result) {
@@ -568,18 +571,18 @@ const AdminDashboardPage = () => {
 
   const handleDeleteSelectedSlots = async () => {
     if (!selectedSlotIds.length) {
-      window.alert('Select at least one slot to delete.');
+      window.alert(t('admin.selectSlotToDelete'));
       return;
     }
 
-    const confirmed = window.confirm(`Delete ${selectedSlotIds.length} selected slot(s)? Any registrations for those slots will also be removed.`);
+    const confirmed = window.confirm(t('admin.confirmDeleteSlots', { count: selectedSlotIds.length }));
     if (!confirmed) {
       return;
     }
 
     const result = await runAction(
       () => api.post('/admin/slots/delete', { slotIds: selectedSlotIds }),
-      'Selected slots deleted'
+      t('admin.selectedSlotsDeleted')
     );
 
     if (result) {
@@ -589,18 +592,18 @@ const AdminDashboardPage = () => {
 
   const handleDeleteSelectedTeachers = async () => {
     if (!selectedTeacherIds.length) {
-      window.alert('Select at least one teacher to delete.');
+      window.alert(t('admin.selectTeacherToDelete'));
       return;
     }
 
-    const confirmed = window.confirm(`Delete ${selectedTeacherIds.length} selected teacher(s)? Their slots and registrations will also be removed.`);
+    const confirmed = window.confirm(t('admin.confirmDeleteTeachers', { count: selectedTeacherIds.length }));
     if (!confirmed) {
       return;
     }
 
     const result = await runAction(
       () => api.post('/admin/teachers/delete', { teacherIds: selectedTeacherIds }),
-      'Selected teachers deleted'
+      t('admin.selectedTeachersDeleted')
     );
 
     if (result) {
@@ -610,18 +613,18 @@ const AdminDashboardPage = () => {
 
   const handleDeleteSelectedParents = async () => {
     if (!selectedParentIds.length) {
-      window.alert('Select at least one parent to delete.');
+      window.alert(t('admin.selectParentToDelete'));
       return;
     }
 
-    const confirmed = window.confirm(`Delete ${selectedParentIds.length} selected parent(s)? Their registrations will also be removed.`);
+    const confirmed = window.confirm(t('admin.confirmDeleteParents', { count: selectedParentIds.length }));
     if (!confirmed) {
       return;
     }
 
     const result = await runAction(
       () => api.post('/admin/parents/delete', { parentIds: selectedParentIds }),
-      'Selected parents deleted'
+      t('admin.selectedParentsDeleted')
     );
 
     if (result) {
@@ -640,14 +643,14 @@ const AdminDashboardPage = () => {
     setImportText(text);
 
     if (!looksStructured(text)) {
-      window.alert('File loaded. The uploader accepts any file type, but automatic teacher creation works only when the file contains readable teacher rows such as CSV, TXT, or JSON. If this is an image or document, paste the extracted teacher list into the box below in the shown format.');
+      window.alert(t('admin.fileLoadedWarning'));
     }
   };
 
   const handleImportTeachers = async () => {
     const trimmed = importText.trim();
     if (!trimmed) {
-      window.alert('Paste teacher rows or upload a CSV/JSON file first.');
+      window.alert(t('admin.pasteRowsFirst'));
       return;
     }
 
@@ -660,18 +663,18 @@ const AdminDashboardPage = () => {
         teachers = parseDelimitedTeachers(trimmed);
       }
     } catch {
-      window.alert('Unable to parse the import file. Use CSV, TXT, or JSON.');
+      window.alert(t('admin.unableParseImport'));
       return;
     }
 
     if (!teachers.length) {
-      window.alert('No teacher records were found in the import.');
+      window.alert(t('admin.noTeacherRecords'));
       return;
     }
 
     const result = await runAction(
       () => api.post('/admin/teachers/import', { teachers }),
-      `Imported ${teachers.length} teacher record(s)`
+      t('admin.importedTeachers', { count: teachers.length })
     );
 
     if (result) {
@@ -685,31 +688,31 @@ const AdminDashboardPage = () => {
       <Navbar />
       <main className="page-shell">
         <header className="page-header">
-          <h1 className="page-title">Admin Dashboard</h1>
-          <p className="page-subtitle">Central control for accounts, slots, bookings, and teacher setup across the whole appointment system.</p>
+          <h1 className="page-title">{t('admin.dashboardTitle')}</h1>
+          <p className="page-subtitle">{t('admin.dashboardSubtitle')}</p>
           <div className="admin-refresh-row">
-            <button className="button-secondary" type="button" onClick={loadDashboard}>Refresh data</button>
-            {lastUpdated && <span>Last updated: {lastUpdated}</span>}
+            <button className="button-secondary" type="button" onClick={loadDashboard}>{t('admin.refreshData')}</button>
+            {lastUpdated && <span>{t('admin.lastUpdated', { time: lastUpdated })}</span>}
           </div>
         </header>
 
         {error && <div className="error-message">{error}</div>}
 
         <section className="cards-grid admin-summary-grid">
-          <div className="card"><h3>Teachers</h3><p className="admin-metric">{data.summary.teachers}</p></div>
-          <div className="card"><h3>Parents</h3><p className="admin-metric">{data.summary.parents}</p></div>
-          <div className="card"><h3>Slots</h3><p className="admin-metric">{data.summary.slots}</p></div>
-          <div className="card"><h3>Registrations</h3><p className="admin-metric">{data.summary.registrations}</p></div>
+          <div className="card"><h3>{t('admin.teachers')}</h3><p className="admin-metric">{data.summary.teachers}</p></div>
+          <div className="card"><h3>{t('admin.parents')}</h3><p className="admin-metric">{data.summary.parents}</p></div>
+          <div className="card"><h3>{t('admin.slots')}</h3><p className="admin-metric">{data.summary.slots}</p></div>
+          <div className="card"><h3>{t('admin.registrations')}</h3><p className="admin-metric">{data.summary.registrations}</p></div>
         </section>
 
         <section className="admin-section">
           <div className="admin-section-heading">
-            <h2>Registration Period</h2>
-            <p>Open or close parent booking centrally for the current meeting period.</p>
+            <h2>{t('admin.registrationPeriod')}</h2>
+            <p>{t('admin.registrationPeriodSubtitle')}</p>
           </div>
           <div className="admin-tools-grid">
             <div className="form-card admin-tool-panel">
-              <h3>Open and Close Registration</h3>
+              <h3>{t('admin.openCloseRegistration')}</h3>
               <form className="form-grid" onSubmit={handleUpdateRegistrationSettings}>
                 <label className="admin-toggle">
                   <input
@@ -718,10 +721,10 @@ const AdminDashboardPage = () => {
                     checked={registrationForm.isOpen}
                     onChange={handleRegistrationFormChange}
                   />
-                  <span>Registration is open</span>
+                  <span>{t('admin.registrationIsOpen')}</span>
                 </label>
                 <div className="form-group">
-                  <label>Opens At</label>
+                  <label>{t('admin.opensAt')}</label>
                   <input
                     name="opensAt"
                     type="datetime-local"
@@ -730,7 +733,7 @@ const AdminDashboardPage = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Closes At</label>
+                  <label>{t('admin.closesAt')}</label>
                   <input
                     name="closesAt"
                     type="datetime-local"
@@ -738,21 +741,21 @@ const AdminDashboardPage = () => {
                     onChange={handleRegistrationFormChange}
                   />
                 </div>
-                <button className="button-primary" type="submit">Save registration period</button>
+                <button className="button-primary" type="submit">{t('admin.saveRegistrationPeriod')}</button>
               </form>
             </div>
             <div className="notification-card admin-status-card">
-              <strong>Current status</strong>
+              <strong>{t('admin.currentStatus')}</strong>
               {data.registrationSettings?.schema_missing && (
                 <div className="error-message">
-                  Database setup required: run backend/db/schema.sql in Supabase to enable this control.
+                  {t('admin.databaseSetupRequired')}
                 </div>
               )}
               <span className={`admin-status-pill ${data.registrationSettings?.is_active_now ? 'open' : 'closed'}`}>
-                {data.registrationSettings?.is_active_now ? 'Open to parents' : 'Closed to parents'}
+                {data.registrationSettings?.is_active_now ? t('admin.openToParents') : t('admin.closedToParents')}
               </span>
               <p>
-                Parents can only select and book slots when this period is open and the current time is inside the saved date range.
+                {t('admin.registrationPeriodHelp')}
               </p>
             </div>
           </div>
@@ -760,13 +763,13 @@ const AdminDashboardPage = () => {
 
         <section className="admin-section">
           <div className="admin-section-heading">
-            <h2>Create Consultation Slots</h2>
-            <p>Choose a teacher and use the calendar workflow to create 10-minute appointments between 12:00 and 19:00.</p>
+            <h2>{t('admin.createConsultationSlots')}</h2>
+            <p>{t('admin.createConsultationSlotsSubtitle')}</p>
           </div>
           <div className="admin-scheduler-layout">
             <div className="calendar-section">
               <TeacherSearchPicker
-                label="Teacher"
+                label={t('admin.teacher')}
                 teachers={data.teachers}
                 selectedTeacherId={slotForm.teacherId}
                 searchValue={slotTeacherSearch}
@@ -778,6 +781,7 @@ const AdminDashboardPage = () => {
                 onFocus={() => setActiveTeacherPicker('calendar')}
                 onSelect={handleSlotTeacherSelect}
                 onClose={closeTeacherPicker}
+                t={t}
               />
               <Calendar
                 value={selectedDate}
@@ -787,13 +791,13 @@ const AdminDashboardPage = () => {
               />
               <p className="calendar-info">
                 {selectedDateSlots.length > 0
-                  ? `${selectedDateSlots.length} slot(s) on ${selectedDate.toLocaleDateString()}`
-                  : `No slots on ${selectedDate.toLocaleDateString()}`}
+                  ? t('admin.slotsOnDate', { count: selectedDateSlots.length, date: selectedDate.toLocaleDateString() })
+                  : t('admin.noSlotsOnDate', { date: selectedDate.toLocaleDateString() })}
               </p>
             </div>
 
             <div className="slots-section">
-              <h3>Slots for {selectedDate.toLocaleDateString()}</h3>
+              <h3>{t('admin.slotsForDate', { date: selectedDate.toLocaleDateString() })}</h3>
               {selectedDateSlots.length > 0 ? (
                 <div className="slots-list admin-slots-list">
                   {selectedDateSlots.map((slot) => (
@@ -804,21 +808,21 @@ const AdminDashboardPage = () => {
                         {formatSlotTime(slot.end_time)}
                       </div>
                       <div className={`slot-status ${slot.is_booked ? 'booked' : 'available'}`}>
-                        {slot.is_booked ? 'Booked' : 'Available'}
+                        {slot.is_booked ? t('admin.booked') : t('admin.available')}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="no-slots">No slots created for this teacher on the selected date.</p>
+                <p className="no-slots">{t('admin.noSlotsForTeacherDate')}</p>
               )}
             </div>
 
             <div className="form-card create-slots admin-create-slots">
-              <h3>Create Slots</h3>
+              <h3>{t('admin.createSlots')}</h3>
               <form className="form-grid" onSubmit={handleGenerateSlots}>
                 <TeacherSearchPicker
-                  label="Teacher for these slots"
+                  label={t('admin.teacherForTheseSlots')}
                   teachers={data.teachers}
                   selectedTeacherId={slotForm.teacherId}
                   searchValue={slotTeacherSearch}
@@ -830,16 +834,17 @@ const AdminDashboardPage = () => {
                   onFocus={() => setActiveTeacherPicker('form')}
                   onSelect={handleSlotTeacherSelect}
                   onClose={closeTeacherPicker}
+                  t={t}
                 />
                 <div className="form-note">
-                  Selected date: {selectedDate.toLocaleDateString()}
+                  {t('admin.selectedDate', { date: selectedDate.toLocaleDateString() })}
                 </div>
                 <div className="form-group">
-                  <label>Start Time</label>
+                  <label>{t('myTimes.startTime')}</label>
                   <input name="startTime" type="time" min={meetingWindow.start} max="18:50" step="600" value={slotForm.startTime} onChange={handleSlotFormChange} required />
                 </div>
                 <div className="form-group">
-                  <label>Number of Slots</label>
+                  <label>{t('myTimes.numberOfSlots')}</label>
                   <input
                     name="numSlots"
                     type="number"
@@ -851,11 +856,11 @@ const AdminDashboardPage = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>End Time</label>
+                  <label>{t('myTimes.endTime')}</label>
                   <input name="endTime" type="time" min="12:10" max={meetingWindow.end} step="600" value={slotForm.endTime} onChange={handleSlotFormChange} required />
                 </div>
-                <div className="form-note">Each meeting is 10 minutes. Meetings run from 12:00 to 19:00.</div>
-                <button className="button-primary" type="submit">Create slots</button>
+                <div className="form-note">{t('myTimes.slotInstructions')}</div>
+                <button className="button-primary" type="submit">{t('admin.createSlots')}</button>
               </form>
             </div>
           </div>
@@ -863,25 +868,25 @@ const AdminDashboardPage = () => {
 
         <section className="admin-section">
           <div className="admin-section-heading">
-            <h2>Add Teachers</h2>
-            <p>Create one teacher manually or bulk import a teacher list. The import area accepts any file upload, but the system can only automatically create teacher accounts when it can read teacher rows in a structured format like `name,email,subject,room,password`.</p>
+            <h2>{t('admin.addTeachers')}</h2>
+            <p>{t('admin.addTeachersSubtitle')}</p>
           </div>
           <div className="admin-tools-grid">
             <div className="form-card admin-tool-panel">
-              <h3>Add One Teacher</h3>
+              <h3>{t('admin.addOneTeacher')}</h3>
               <form className="form-grid" onSubmit={handleCreateTeacher}>
                 <div className="form-group">
-                  <label>Teacher Full Name</label>
+                  <label>{t('admin.teacherFullName')}</label>
                   <input
                     name="name"
                     value={teacherForm.name}
                     onChange={handleTeacherFormChange}
                     required
                   />
-                  <small>Enter the teacher's full name exactly as you want it shown to parents.</small>
+                  <small>{t('admin.teacherFullNameHelp')}</small>
                 </div>
                 <div className="form-group">
-                  <label>Teacher Email Address</label>
+                  <label>{t('admin.teacherEmailAddress')}</label>
                   <input
                     name="email"
                     type="email"
@@ -889,30 +894,30 @@ const AdminDashboardPage = () => {
                     onChange={handleTeacherFormChange}
                     required
                   />
-                  <small>This is the email the teacher will use to log in.</small>
+                  <small>{t('admin.teacherEmailHelp')}</small>
                 </div>
                 <div className="form-group">
-                  <label>Main Subject</label>
+                  <label>{t('admin.mainSubject')}</label>
                   <input
                     name="subject"
                     value={teacherForm.subject}
                     onChange={handleTeacherFormChange}
                     required
                   />
-                  <small>Enter the main subject parents should see for this teacher.</small>
+                  <small>{t('admin.mainSubjectHelp')}</small>
                 </div>
                 <div className="form-group">
-                  <label>Room</label>
+                  <label>{t('admin.room')}</label>
                   <input
                     name="room"
                     value={teacherForm.room}
                     onChange={handleTeacherFormChange}
                     required
                   />
-                  <small>Use the room number where the meeting should happen.</small>
+                  <small>{t('admin.roomHelp')}</small>
                 </div>
                 <div className="form-group">
-                  <label>Temporary Password</label>
+                  <label>{t('admin.temporaryPassword')}</label>
                   <input
                     name="password"
                     type="text"
@@ -920,35 +925,35 @@ const AdminDashboardPage = () => {
                     onChange={handleTeacherFormChange}
                     required
                   />
-                  <small>Give the teacher a starter password they can use for their first login.</small>
+                  <small>{t('admin.temporaryPasswordHelp')}</small>
                 </div>
-                <button className="button-primary" type="submit">Create teacher</button>
+                <button className="button-primary" type="submit">{t('admin.createTeacher')}</button>
               </form>
             </div>
 
             <div className="form-card admin-tool-panel">
-              <h3>Import Teachers</h3>
+              <h3>{t('admin.importTeachers')}</h3>
               <div className="form-grid">
                 <div className="form-group">
-                  <label>Upload Any File</label>
+                  <label>{t('admin.uploadAnyFile')}</label>
                   <input type="file" accept="*/*" onChange={handleImportFile} />
-                  {importFileName && <small>Loaded file: {importFileName}</small>}
-                  <small>CSV, TXT, and JSON can be imported directly. Images, PDFs, and other files are accepted too, but they still need readable teacher rows inside them before accounts can be created.</small>
+                  {importFileName && <small>{t('admin.loadedFile', { file: importFileName })}</small>}
+                  <small>{t('admin.uploadHelp')}</small>
                 </div>
                 <div className="form-group">
-                  <label>Paste Teacher Rows</label>
+                  <label>{t('admin.pasteTeacherRows')}</label>
                   <textarea
                     value={importText}
                     onChange={(e) => setImportText(e.target.value)}
                   />
-                  <small>Required columns: `name`, `email`, `subject`, `room`, `password`.</small>
+                  <small>{t('admin.requiredColumns')}</small>
                 </div>
                 {importPreview.length > 0 && (
                   <div className="notification-card">
-                    Ready to import {importPreview.length} teacher record(s).
+                    {t('admin.readyToImport', { count: importPreview.length })}
                   </div>
                 )}
-                <button className="button-primary" type="button" onClick={handleImportTeachers}>Import teachers</button>
+                <button className="button-primary" type="button" onClick={handleImportTeachers}>{t('admin.importTeachers')}</button>
               </div>
             </div>
           </div>
@@ -956,8 +961,8 @@ const AdminDashboardPage = () => {
 
         <section className="admin-section">
           <div className="admin-section-heading">
-            <h2>Teachers</h2>
-            <p>Review teacher accounts, imported subjects, and remove records when needed.</p>
+            <h2>{t('admin.teachers')}</h2>
+            <p>{t('admin.teachersSubtitle')}</p>
           </div>
           <div className="admin-bulk-actions">
             <button
@@ -966,7 +971,7 @@ const AdminDashboardPage = () => {
               onClick={handleSelectAllTeachers}
               disabled={data.teachers.length === 0}
             >
-              {selectedTeacherIds.length === data.teachers.length && data.teachers.length > 0 ? 'Clear selection' : 'Select all teachers'}
+              {selectedTeacherIds.length === data.teachers.length && data.teachers.length > 0 ? t('admin.clearSelection') : t('admin.selectAllTeachers')}
             </button>
             <button
               className="button-primary"
@@ -974,18 +979,18 @@ const AdminDashboardPage = () => {
               onClick={handleDeleteSelectedTeachers}
               disabled={selectedTeacherIds.length === 0}
             >
-              Delete selected ({selectedTeacherIds.length})
+              {t('admin.deleteSelected', { count: selectedTeacherIds.length })}
             </button>
           </div>
           <div className="admin-table">
             <div className="admin-table-head admin-table-head-selectable">
-              <span>No.</span>
-              <span>Select</span>
-              <span>Name</span>
-              <span>Subject</span>
-              <span>Room</span>
-              <span>Email</span>
-              <span>Action</span>
+              <span>{t('admin.no')}</span>
+              <span>{t('admin.select')}</span>
+              <span>{t('login.name')}</span>
+              <span>{t('login.subject')}</span>
+              <span>{t('admin.room')}</span>
+              <span>{t('login.email')}</span>
+              <span>{t('admin.action')}</span>
             </div>
             {data.teachers.map((teacher, index) => (
               <div className="admin-table-row admin-table-row-selectable" key={teacher.id}>
@@ -998,10 +1003,10 @@ const AdminDashboardPage = () => {
                   />
                 </label>
                 <span>{teacher.name}</span>
-                <span>{teacher.subject || 'Not set'}</span>
-                <span>{teacher.room || 'Not set'}</span>
+                <span>{teacher.subject || t('admin.notSet')}</span>
+                <span>{teacher.room || t('admin.notSet')}</span>
                 <span>{teacher.email}</span>
-                <button className="button-secondary" onClick={() => runAction(() => api.delete(`/admin/teachers/${teacher.id}`), 'Teacher deleted')}>Delete</button>
+                <button className="button-secondary" onClick={() => runAction(() => api.delete(`/admin/teachers/${teacher.id}`), t('admin.teacherDeleted'))}>{t('admin.delete')}</button>
               </div>
             ))}
           </div>
@@ -1009,8 +1014,8 @@ const AdminDashboardPage = () => {
 
         <section className="admin-section">
           <div className="admin-section-heading">
-            <h2>Parents</h2>
-            <p>Review parent accounts and remove access when necessary.</p>
+            <h2>{t('admin.parents')}</h2>
+            <p>{t('admin.parentsSubtitle')}</p>
           </div>
           <div className="admin-bulk-actions">
             <button
@@ -1019,7 +1024,7 @@ const AdminDashboardPage = () => {
               onClick={handleSelectAllParents}
               disabled={data.parents.length === 0}
             >
-              {selectedParentIds.length === data.parents.length && data.parents.length > 0 ? 'Clear selection' : 'Select all parents'}
+              {selectedParentIds.length === data.parents.length && data.parents.length > 0 ? t('admin.clearSelection') : t('admin.selectAllParents')}
             </button>
             <button
               className="button-primary"
@@ -1027,17 +1032,17 @@ const AdminDashboardPage = () => {
               onClick={handleDeleteSelectedParents}
               disabled={selectedParentIds.length === 0}
             >
-              Delete selected ({selectedParentIds.length})
+              {t('admin.deleteSelected', { count: selectedParentIds.length })}
             </button>
           </div>
           <div className="admin-table">
             <div className="admin-table-head admin-table-head-parents">
-              <span>No.</span>
-              <span>Select</span>
-              <span>Name</span>
-              <span>Email</span>
-              <span>Created</span>
-              <span>Action</span>
+              <span>{t('admin.no')}</span>
+              <span>{t('admin.select')}</span>
+              <span>{t('login.name')}</span>
+              <span>{t('login.email')}</span>
+              <span>{t('admin.created')}</span>
+              <span>{t('admin.action')}</span>
             </div>
             {data.parents.map((parent, index) => (
               <div className="admin-table-row admin-table-row-parents" key={parent.id}>
@@ -1051,8 +1056,8 @@ const AdminDashboardPage = () => {
                 </label>
                 <span>{parent.name}</span>
                 <span>{parent.email}</span>
-                <span>{parent.created_at ? new Date(parent.created_at).toLocaleString() : 'Unknown'}</span>
-                <button className="button-secondary" onClick={() => runAction(() => api.delete(`/admin/parents/${parent.id}`), 'Parent deleted')}>Delete</button>
+                <span>{parent.created_at ? new Date(parent.created_at).toLocaleString() : t('admin.unknown')}</span>
+                <button className="button-secondary" onClick={() => runAction(() => api.delete(`/admin/parents/${parent.id}`), t('admin.parentDeleted'))}>{t('admin.delete')}</button>
               </div>
             ))}
           </div>
@@ -1060,34 +1065,34 @@ const AdminDashboardPage = () => {
 
         <section className="admin-section">
           <div className="admin-section-heading">
-            <h2>Registrations</h2>
-            <p>See every booking and cancel it from one place.</p>
+            <h2>{t('admin.registrations')}</h2>
+            <p>{t('admin.registrationsSubtitle')}</p>
           </div>
           <div className="registration-list">
             {data.registrations.map((registration) => (
               <div className="registration-card" key={registration.id}>
                 <div className="registration-row">
-                  <strong>Teacher</strong>
-                  <span>{registration.teachers?.name || `Teacher #${registration.teacher_id}`}</span>
+                  <strong>{t('admin.teacher')}</strong>
+                  <span>{registration.teachers?.name || t('admin.teacherNumber', { id: registration.teacher_id })}</span>
                 </div>
                 <div className="registration-row">
-                  <strong>Parent</strong>
-                  <span>{registration.parent_name} ({registration.parent_email || registration.parent_phone || 'No contact'})</span>
+                  <strong>{t('admin.parent')}</strong>
+                  <span>{registration.parent_name} ({registration.parent_email || registration.parent_phone || t('admin.noContact')})</span>
                 </div>
                 <div className="registration-row">
-                  <strong>Child</strong>
+                  <strong>{t('parentDashboard.child')}</strong>
                   <span>{registration.child_name} - {registration.child_class}</span>
                 </div>
                 <div className="registration-row">
-                  <strong>Slot</strong>
+                  <strong>{t('parentDashboard.slot')}</strong>
                   <span>{formatSlotDateTime(registration.slots?.start_time)} - {formatSlotDateTime(registration.slots?.end_time)}</span>
                 </div>
                 <div className="registration-row">
-                  <strong>Status</strong>
-                  <span>{registration.status || 'active'}</span>
+                  <strong>{t('parentDashboard.status')}</strong>
+                  <span>{registration.status || t('admin.active')}</span>
                 </div>
                 <div className="registration-actions">
-                  <button className="button-secondary" onClick={() => runAction(() => api.patch(`/admin/registrations/${registration.id}/cancel`), 'Registration cancelled')}>Cancel registration</button>
+                  <button className="button-secondary" onClick={() => runAction(() => api.patch(`/admin/registrations/${registration.id}/cancel`), t('admin.registrationCancelled'))}>{t('registrations.cancelRegistration')}</button>
                 </div>
               </div>
             ))}
@@ -1096,8 +1101,8 @@ const AdminDashboardPage = () => {
 
         <section className="admin-section">
           <div className="admin-section-heading">
-            <h2>Slots</h2>
-            <p>Inspect every appointment slot and remove bad or outdated entries.</p>
+            <h2>{t('admin.slots')}</h2>
+            <p>{t('admin.slotsSubtitle')}</p>
           </div>
           <div className="admin-bulk-actions">
             <button
@@ -1106,7 +1111,7 @@ const AdminDashboardPage = () => {
               onClick={handleSelectAllSlots}
               disabled={data.slots.length === 0}
             >
-              {selectedSlotIds.length === data.slots.length && data.slots.length > 0 ? 'Clear selection' : 'Select all slots'}
+              {selectedSlotIds.length === data.slots.length && data.slots.length > 0 ? t('admin.clearSelection') : t('admin.selectAllSlots')}
             </button>
             <button
               className="button-primary"
@@ -1114,18 +1119,18 @@ const AdminDashboardPage = () => {
               onClick={handleDeleteSelectedSlots}
               disabled={selectedSlotIds.length === 0}
             >
-              Delete selected ({selectedSlotIds.length})
+              {t('admin.deleteSelected', { count: selectedSlotIds.length })}
             </button>
           </div>
           <div className="admin-table">
             <div className="admin-table-head admin-table-head-slots">
-              <span>No.</span>
-              <span>Select</span>
-              <span>Teacher</span>
-              <span>Start</span>
-              <span>End</span>
-              <span>Status</span>
-              <span>Action</span>
+              <span>{t('admin.no')}</span>
+              <span>{t('admin.select')}</span>
+              <span>{t('admin.teacher')}</span>
+              <span>{t('admin.start')}</span>
+              <span>{t('admin.end')}</span>
+              <span>{t('parentDashboard.status')}</span>
+              <span>{t('admin.action')}</span>
             </div>
             {data.slots.map((slot, index) => (
               <div className="admin-table-row admin-table-row-slots" key={slot.id}>
@@ -1137,11 +1142,11 @@ const AdminDashboardPage = () => {
                     onChange={() => handleSelectSlot(slot.id)}
                   />
                 </label>
-                <span>{slot.teachers?.name || `Teacher #${slot.teacher_id}`}</span>
+                <span>{slot.teachers?.name || t('admin.teacherNumber', { id: slot.teacher_id })}</span>
                 <span>{formatSlotDateTime(slot.start_time)}</span>
                 <span>{formatSlotDateTime(slot.end_time)}</span>
-                <span>{slot.is_booked ? 'Booked' : 'Available'}</span>
-                <button className="button-secondary" onClick={() => runAction(() => api.delete(`/admin/slots/${slot.id}`), 'Slot deleted')}>Delete</button>
+                <span>{slot.is_booked ? t('admin.booked') : t('admin.available')}</span>
+                <button className="button-secondary" onClick={() => runAction(() => api.delete(`/admin/slots/${slot.id}`), t('admin.slotDeleted'))}>{t('admin.delete')}</button>
               </div>
             ))}
           </div>

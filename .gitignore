@@ -12,3 +12,7 @@ frontend/build/
 
 .DS_Store
 Thumbs.db
+
+.vercel/
+frontend/.vercel/
+URL - *.txt

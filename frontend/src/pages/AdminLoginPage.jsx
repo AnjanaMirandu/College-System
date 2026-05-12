@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
 
 const AdminLoginPage = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
@@ -22,7 +24,7 @@ const AdminLoginPage = () => {
       localStorage.setItem('userEmail', res.data.admin.email);
       navigate('/admin/dashboard');
     } catch (error) {
-      alert(error?.response?.data?.message || 'Unable to log in as admin');
+      alert(error?.response?.data?.message || t('admin.loginError'));
     }
   };
 
@@ -31,20 +33,20 @@ const AdminLoginPage = () => {
       <Navbar />
       <main className="page-shell">
         <header className="page-header">
-          <h1 className="page-title">Admin Login</h1>
-          <p className="page-subtitle">Sign in to manage teachers, parents, bookings, and appointment slots across the whole site.</p>
+          <h1 className="page-title">{t('admin.loginTitle')}</h1>
+          <p className="page-subtitle">{t('admin.loginSubtitle')}</p>
         </header>
         <div className="form-card">
           <form className="form-grid" onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>Email</label>
+              <label>{t('login.email')}</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div className="form-group">
-              <label>Password</label>
+              <label>{t('login.password')}</label>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
-            <button className="button-primary" type="submit">Login as Admin</button>
+            <button className="button-primary" type="submit">{t('admin.loginButton')}</button>
           </form>
         </div>
       </main>
