@@ -19,7 +19,7 @@ const LoginPage = () => {
 
     try {
       if (mode === 'login') {
-        const res = await api.post('/auth/login', { email, password });
+        const res = await api.post('/auth/teacher/login', { email, password });
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('userType', 'teacher');
         localStorage.setItem('userName', res.data.teacher.name);

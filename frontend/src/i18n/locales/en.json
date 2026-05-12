@@ -126,7 +126,7 @@
     "createNewSlots": "Create New Slots",
     "selectedDateFromCalendar": "Date selected from calendar: {{date}}",
     "startTime": "Start Time",
-    "numberOfSlots": "Number of Slots (1-42)",
+    "numberOfSlots": "Number of Slots",
     "endTime": "End Time",
     "estimatedEndTime": "Estimated End Time:",
     "pleaseSelectValidTime": "Please select a valid start time and slot count.",

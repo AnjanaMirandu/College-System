@@ -41,7 +41,7 @@ const Navbar = () => {
           )
         ) : (
           <>
-            <Link to="/login">{t('common.teacherLogin')}</Link>
+            <Link to="/teacher/login">{t('common.teacherLogin')}</Link>
             <Link to="/parent/login">{t('common.parentLogin')}</Link>
             <Link to="/admin/login">{t('common.adminLogin')}</Link>
           </>

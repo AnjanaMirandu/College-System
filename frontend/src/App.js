@@ -46,6 +46,7 @@ function App() {
           <Route path="/book" element={<RequireParent><BookingFormPage /></RequireParent>} />
           <Route path="/book/:slotId" element={<RequireParent><BookingFormPage /></RequireParent>} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/teacher/login" element={<LoginPage />} />
           <Route path="/teacher/register" element={<TeacherRegisterPage />} />
           <Route path="/parent/login" element={<ParentLoginPage />} />
           <Route path="/parent/register" element={<ParentRegisterPage />} />

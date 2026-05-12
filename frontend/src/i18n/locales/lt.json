@@ -126,7 +126,7 @@
     "createNewSlots": "Kurti naujas vietas",
     "selectedDateFromCalendar": "Data pasirinkta iš kalendoriaus: {{date}}",
     "startTime": "Pradžios laikas",
-    "numberOfSlots": "Vietų skaičius (1-42)",
+    "numberOfSlots": "Vietų skaičius",
     "endTime": "Pabaigos laikas",
     "estimatedEndTime": "Apskaičiuotas pabaigos laikas:",
     "pleaseSelectValidTime": "Prašome pasirinkti galiojantį pradžios laiką ir vietų skaičių.",

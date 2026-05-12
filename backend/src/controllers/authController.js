@@ -56,6 +56,16 @@ const loginTeacher = async (req, res) => {
     .maybeSingle();
 
   if (error || !teacher) {
+    const { data: parentWithEmail } = await supabase
+      .from('parents')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (parentWithEmail) {
+      return res.status(400).json({ message: 'This email belongs to a parent account. Please use Parent Login.' });
+    }
+
     return res.status(400).json({ message: 'Invalid credentials' });
   }
 
@@ -113,6 +123,16 @@ const loginParent = async (req, res) => {
     .maybeSingle();
 
   if (error || !parent) {
+    const { data: teacherWithEmail } = await supabase
+      .from('teachers')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (teacherWithEmail) {
+      return res.status(400).json({ message: 'This email belongs to a teacher account. Please use Teacher Login.' });
+    }
+
     return res.status(400).json({ message: 'Invalid credentials' });
   }
 

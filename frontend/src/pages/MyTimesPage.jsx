@@ -14,9 +14,9 @@ const meetingWindow = {
 
 const MyTimesPage = () => {
   const [form, setForm] = useState({
-    startTime: meetingWindow.start,
-    numSlots: meetingWindow.maxSlots,
-    endTime: meetingWindow.end
+    startTime: '',
+    numSlots: '',
+    endTime: ''
   });
   const [calculatedEndTime, setCalculatedEndTime] = useState('');
   const [slots, setSlots] = useState([]);
@@ -81,6 +81,12 @@ const MyTimesPage = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === 'numSlots') {
+      if (value === '') {
+        setForm({ ...form, numSlots: '', endTime: '' });
+        setCalculatedEndTime('');
+        return;
+      }
+
       const numSlots = Number(value) || 0;
       const endTime = computeEndTime(form.startTime, numSlots);
       setForm({ ...form, numSlots: endTime ? computeSlotCount(form.startTime, endTime) : numSlots, endTime });
@@ -139,7 +145,7 @@ const MyTimesPage = () => {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       alert(t('myTimes.success.generated'));
-      setForm({ startTime: meetingWindow.start, numSlots: meetingWindow.maxSlots, endTime: meetingWindow.end });
+      setForm({ startTime: '', numSlots: '', endTime: '' });
       setCalculatedEndTime('');
       fetchTeacherSlots();
     } catch (error) {
