@@ -1,0 +1,23 @@
+name: Meeting reminders
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run reminder job
+        env:
+          REMINDER_URL: https://backend-ivory-seven-14.vercel.app/api/reminders/run
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -n "$CRON_SECRET" ]; then
+            curl --fail --show-error --silent \
+              --header "Authorization: Bearer $CRON_SECRET" \
+              "$REMINDER_URL"
+          else
+            curl --fail --show-error --silent "$REMINDER_URL"
+          fi
