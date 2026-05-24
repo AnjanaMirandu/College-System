@@ -1,30 +1,28 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const supabase = require('../config/db');
+const { sendPasswordResetEmail, sendWelcomeEmail } = require('../services/emailService');
 
 const createToken = (payload) => jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
-const fallbackAdmins = [
-  {
-    id: 1,
-    name: process.env.ADMIN_NAME || 'Test Admin',
-    email: process.env.ADMIN_EMAIL || 'testadmin1@gmail.com',
-    password_hash: process.env.ADMIN_PASSWORD_HASH || '$2b$10$6fH8MhrotfUgmhxoo2DTTuW8rKz4.8vW.OACYTvjNKmCxfJom1Lw6',
-  },
-  {
-    id: 2,
-    name: 'Test Admin',
-    email: 'test.admin@college.test',
-    password_hash: '$2b$10$7e8UKKRz4ZD6ionXfbw8/ewr7yS8ZYf14h3w33xv.ZnA/3BDlBwgK',
-  },
-];
+const createPasswordResetToken = (payload) => jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '30m' });
+const allowedAdmin = {
+  id: 1,
+  name: 'Kristina Rimkuviene',
+  email: 'kristina.rimkuviene@didzdvaris.lt',
+  password_hash: '$2b$10$crSqZDiGS7ClHvBHq791/OC0.G4aEMXJXN1PbyjFCjbVIaKTqprFS',
+};
 
 const recordLoginEvent = async ({ userId, userType, email }) => {
-  await supabase.from('auth_logs').insert([{
+  const { error } = await supabase.from('auth_logs').insert([{
     user_id: userId,
     user_type: userType,
     email,
     created_at: new Date().toISOString(),
   }]);
+
+  if (error) {
+    console.warn('Failed to record login event:', error.message);
+  }
 };
 
 const buildAuthResponse = (user, type) => {
@@ -47,8 +45,37 @@ const isMissingParentChildColumns = (error) => (
   || error?.message?.includes("Could not find the 'child_class' column")
 );
 
+const getFrontendUrl = () => (
+  process.env.FRONTEND_URL
+  || process.env.CLIENT_URL
+  || 'https://didzdvaris-booking.vercel.app'
+).replace(/\/$/, '');
+
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
+const normalizeLanguage = (language) => (String(language || '').toLowerCase().startsWith('lt') ? 'lt' : 'en');
+
+const getResetTable = (accountType) => {
+  if (accountType === 'teacher') return 'teachers';
+  if (accountType === 'parent') return 'parents';
+  return '';
+};
+
+const sendWelcomeEmailSafely = async ({ user, accountType, language }) => {
+  try {
+    await sendWelcomeEmail({
+      to: user.email,
+      name: user.name,
+      accountType,
+      language,
+    });
+  } catch (mailError) {
+    console.error(`${accountType} welcome email failed:`, mailError.message);
+  }
+};
+
 const loginTeacher = async (req, res) => {
-  const { email, password } = req.body;
+  const email = normalizeEmail(req.body?.email);
+  const { password } = req.body;
   const { data: teacher, error } = await supabase
     .from('teachers')
     .select('*')
@@ -79,7 +106,9 @@ const loginTeacher = async (req, res) => {
 };
 
 const registerTeacher = async (req, res) => {
-  const { name, email, password, subject, room } = req.body;
+  const { name, password, subject, room } = req.body;
+  const email = normalizeEmail(req.body?.email);
+  const language = normalizeLanguage(req.body?.language);
 
   if (!name || !email || !password) {
     return res.status(400).json({ message: 'Name, email, and password are required' });
@@ -111,11 +140,13 @@ const registerTeacher = async (req, res) => {
   }
 
   await recordLoginEvent({ userId: data.id, userType: 'teacher', email: data.email });
+  await sendWelcomeEmailSafely({ user: data, accountType: 'teacher', language });
   res.json(buildAuthResponse(data, 'teacher'));
 };
 
 const loginParent = async (req, res) => {
-  const { email, password } = req.body;
+  const email = normalizeEmail(req.body?.email);
+  const { password } = req.body;
   const { data: parent, error } = await supabase
     .from('parents')
     .select('*')
@@ -146,7 +177,9 @@ const loginParent = async (req, res) => {
 };
 
 const registerParent = async (req, res) => {
-  const { name, email, password, childName, childClass } = req.body;
+  const { name, password, childName, childClass } = req.body;
+  const email = normalizeEmail(req.body?.email);
+  const language = normalizeLanguage(req.body?.language);
 
   if (!name || !email || !password || !childName || !childClass) {
     return res.status(400).json({ message: 'Name, email, password, child name, and class are required' });
@@ -209,38 +242,128 @@ const registerParent = async (req, res) => {
   }
 
   await recordLoginEvent({ userId: data.id, userType: 'parent', email: data.email });
+  await sendWelcomeEmailSafely({ user: data, accountType: 'parent', language });
   res.json(buildAuthResponse(data, 'parent'));
 };
 
 const loginAdmin = async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || '').trim();
-  const { data: admin, error } = await supabase
-    .from('admins')
-    .select('*')
-    .eq('email', email)
-    .maybeSingle();
 
-  const fallbackAdmin = fallbackAdmins.find((item) => item.email.toLowerCase() === String(email || '').toLowerCase()) || null;
-  const activeAdmin = error?.message?.includes("Could not find the table 'public.admins'")
-    ? fallbackAdmin
-    : (admin || fallbackAdmin);
-
-  if (error && !error.message?.includes("Could not find the table 'public.admins'")) {
-    return res.status(500).json({ message: 'Unable to load admin account' });
-  }
-
-  if (!activeAdmin) {
+  if (email !== allowedAdmin.email) {
     return res.status(400).json({ message: 'Invalid credentials' });
   }
 
-  const isMatch = await bcrypt.compare(password, activeAdmin.password_hash);
+  const isMatch = await bcrypt.compare(password, allowedAdmin.password_hash);
   if (!isMatch) {
     return res.status(400).json({ message: 'Invalid credentials' });
   }
 
-  await recordLoginEvent({ userId: activeAdmin.id, userType: 'admin', email: activeAdmin.email });
-  res.json(buildAuthResponse(activeAdmin, 'admin'));
+  await recordLoginEvent({ userId: allowedAdmin.id, userType: 'admin', email: allowedAdmin.email });
+  res.json(buildAuthResponse(allowedAdmin, 'admin'));
 };
 
-module.exports = { loginTeacher, registerTeacher, loginParent, registerParent, loginAdmin };
+const requestPasswordReset = async (req, res) => {
+  const accountType = String(req.body?.accountType || '').trim().toLowerCase();
+  const email = normalizeEmail(req.body?.email);
+  const language = normalizeLanguage(req.body?.language);
+  const table = getResetTable(accountType);
+
+  if (!table || !email) {
+    return res.status(400).json({ message: 'Account type and email are required' });
+  }
+
+  const { data: user, error } = await supabase
+    .from(table)
+    .select('id, name, email')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (error) {
+    return res.status(500).json({ message: 'Unable to check this email address' });
+  }
+
+  if (user) {
+    const token = createPasswordResetToken({
+      id: user.id,
+      email: user.email,
+      type: accountType,
+      purpose: 'password-reset',
+    });
+    const resetUrl = `${getFrontendUrl()}/reset-password?token=${encodeURIComponent(token)}`;
+
+    try {
+      await sendPasswordResetEmail({
+        to: user.email,
+        name: user.name,
+        resetUrl,
+        accountType,
+        language,
+      });
+    } catch (mailError) {
+      console.error('Password reset email failed:', mailError.message);
+      return res.status(500).json({ message: 'Unable to send reset email. Please contact the school administrator.' });
+    }
+  }
+
+  return res.json({
+    message: 'If that email is registered, a password reset link has been sent.',
+  });
+};
+
+const resetPassword = async (req, res) => {
+  const token = String(req.body?.token || '').trim();
+  const password = String(req.body?.password || '');
+
+  if (!token || !password) {
+    return res.status(400).json({ message: 'Reset token and new password are required' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ message: 'Password must be at least 6 characters' });
+  }
+
+  let payload;
+  try {
+    payload = jwt.verify(token, process.env.JWT_SECRET);
+  } catch {
+    return res.status(400).json({ message: 'This reset link is invalid or has expired' });
+  }
+
+  if (payload?.purpose !== 'password-reset') {
+    return res.status(400).json({ message: 'This reset link is invalid' });
+  }
+
+  const table = getResetTable(payload.type);
+  if (!table || !payload.email || !payload.id) {
+    return res.status(400).json({ message: 'This reset link is invalid' });
+  }
+
+  const password_hash = await bcrypt.hash(password, 10);
+  const { data, error } = await supabase
+    .from(table)
+    .update({ password_hash })
+    .eq('id', payload.id)
+    .eq('email', payload.email)
+    .select('id')
+    .maybeSingle();
+
+  if (error || !data) {
+    return res.status(400).json({ message: 'Unable to reset password for this account' });
+  }
+
+  return res.json({
+    message: 'Password reset successfully',
+    accountType: payload.type,
+  });
+};
+
+module.exports = {
+  loginTeacher,
+  registerTeacher,
+  loginParent,
+  registerParent,
+  loginAdmin,
+  requestPasswordReset,
+  resetPassword,
+};
