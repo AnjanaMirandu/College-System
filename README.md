@@ -1,75 +1,177 @@
 # Parent-Teacher Appointment Booking System
 
-A web-based MVP system for booking parent-teacher meetings.
+This is a web application for booking parent-teacher meeting slots. Parents can create an account, choose a teacher, and book an available time. Teachers can log in, add available slots, and view their bookings.
 
-## Setup
+The project has two parts:
+
+- `backend` - Node.js and Express API
+- `frontend` - React website
+
+Supabase is used for the database.
+
+## Main Features
+
+- Parent registration and login
+- Teacher login and registration
+- Admin dashboard for managing teachers, parents, slots, and bookings
+- Parents can book available teacher meeting slots
+- Teachers can create and manage their own available times
+- Password reset email support
+- Email reminders for booked meetings
+
+## Project Structure
+
+```text
+backend/
+  src/
+  db/
+  api/
+frontend/
+  src/
+```
+
+## Local Setup
 
 ### Backend
-1. cd backend
-2. npm install
-3. Set up Supabase database with the provided schema.
-4. Update .env with your Supabase credentials.
-5. npm start
 
-### Frontend
-1. cd frontend
-2. npm install
-3. npm start
+Open a terminal in the project folder and run:
 
-## Public Deployment
+```bash
+cd backend
+npm install
+npm start
+```
 
-The project is split into two deployable apps:
+Before starting the backend, create a `.env` file in the `backend` folder. Add your Supabase and frontend settings there.
 
-- `backend`: Node/Express API connected to Supabase
-- `frontend`: React app that calls the deployed backend API
+Example:
 
-### Backend host
-Deploy the `backend` folder to a Node hosting service. Use:
+```env
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+JWT_SECRET=your_secret_key
+CLIENT_URL=https://your-frontend-domain.vercel.app
+FRONTEND_URL=https://your-frontend-domain.vercel.app
+```
 
-- Build command: `npm install`
-- Start command: `npm start`
+The backend should run on:
 
-Set these environment variables on the backend host:
+```text
+http://localhost:5000
+```
 
-- `PORT`: usually provided automatically by the host
-- `CLIENT_URL`: your deployed frontend URL, for example `https://your-site.vercel.app`
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `JWT_SECRET`
-- `ADMIN_NAME`
-- `ADMIN_EMAIL`
-- `ADMIN_PASSWORD_HASH`
+You can test it by opening:
 
-After deployment, check:
+```text
+http://localhost:5000/health
+```
 
-`https://your-backend-domain/health`
-
-It should return:
+It should show:
 
 ```json
 {"status":"ok"}
 ```
 
-### Frontend host
-Deploy the `frontend` folder to a React/static hosting service. Use:
+### Frontend
 
+The frontend is deployed on Vercel. For the live project, use the Vercel frontend URL instead of a localhost address.
+
+If you need to run the frontend only for development, use:
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+## Database Setup
+
+The SQL files are inside:
+
+```text
+backend/db/
+```
+
+Run the schema in Supabase before using the app.
+
+Main file:
+
+```text
+backend/db/schema.sql
+```
+
+## Deployment
+
+This project is deployed as two separate Vercel projects.
+
+For the live version, the frontend should use the Vercel frontend URL, not `localhost`.
+
+### Backend Deployment
+
+Deploy the `backend` folder as the backend project.
+
+Important Vercel settings:
+
+- Root directory: `backend`
+- Framework preset: Other
+- Build command: default or empty
+- Start command: `npm start`
+
+Backend environment variables:
+
+```env
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+JWT_SECRET=your_secret_key
+CLIENT_URL=https://your-frontend-domain.vercel.app
+FRONTEND_URL=https://your-frontend-domain.vercel.app
+```
+
+For Gmail email sending:
+
+```env
+GMAIL_USER=your_sender_email@gmail.com
+GMAIL_APP_PASSWORD=your_gmail_app_password
+MAIL_FROM=your_sender_email@gmail.com
+```
+
+After deployment, check:
+
+```text
+https://your-backend-domain.vercel.app/health
+```
+
+### Frontend Deployment
+
+Deploy the `frontend` folder as the frontend project.
+
+Important Vercel settings:
+
+- Root directory: `frontend`
 - Build command: `npm run build`
 - Output directory: `build`
 
-Set this environment variable on the frontend host:
+Frontend environment variable:
 
-- `REACT_APP_API_URL`: your deployed backend API URL, for example `https://your-backend-domain/api`
+```env
+REACT_APP_API_URL=https://your-backend-domain.vercel.app/api
+```
 
-After changing backend or frontend URLs, redeploy the frontend so the API URL is baked into the React build.
+If the backend URL changes, update `REACT_APP_API_URL` and redeploy the frontend.
 
-## Features
-- Parents can view teachers and book slots.
-- Teachers can log in, create slots, and manage registrations.
+## Test Login
 
-## Sample teacher login
-- Email: surajmirandu@gmail.com
-- Password: 123456
+Sample teacher account:
 
-## Database Schema
-See codex_project_requirements.md for details.
+```text
+Email: surajmirandu@gmail.com
+Password: 123456
+```
+
+## Notes
+
+- Do not upload `.env` files to GitHub.
+- Use a Gmail App Password for email sending, not the normal Gmail password.
+- If email does not work after changing Vercel environment variables, redeploy the backend.
