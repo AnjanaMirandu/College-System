@@ -5,7 +5,7 @@ import api from '../api/axios';
 import Navbar from '../components/Navbar';
 
 const TeacherRegisterPage = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -22,7 +22,7 @@ const TeacherRegisterPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.post('/auth/teacher/register', { ...form, language: i18n.language });
+      const res = await api.post('/auth/teacher/register', form);
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('userType', 'teacher');
       localStorage.setItem('userName', res.data.teacher.name);

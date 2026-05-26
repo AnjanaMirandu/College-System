@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
 
 const ParentLoginPage = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [mode, setMode] = useState('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -28,7 +28,7 @@ const ParentLoginPage = () => {
         localStorage.setItem('childClass', res.data.parent.child_class || '');
         navigate('/parent/dashboard');
       } else {
-        const res = await api.post('/auth/parent/register', { name, email, password, childName, childClass, language: i18n.language });
+        const res = await api.post('/auth/parent/register', { name, email, password, childName, childClass });
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('userType', 'parent');
         localStorage.setItem('userName', res.data.parent.name);
@@ -83,13 +83,6 @@ const ParentLoginPage = () => {
             <button className="button-primary" type="submit">
               {mode === 'login' ? t('parentLogin.login') : t('parentLogin.register')}
             </button>
-            {mode === 'login' && (
-              <p className="form-note">
-                <Link className="link-button-inline" to="/parent/forgot-password">
-                  {t('passwordReset.forgotPassword')}
-                </Link>
-              </p>
-            )}
             <p className="form-note">
               <button type="button" className="link-button-inline" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
                 {mode === 'login' ? t('parentLogin.switchToRegister') : t('parentLogin.switchToLogin')}

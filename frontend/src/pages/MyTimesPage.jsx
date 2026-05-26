@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Calendar from 'react-calendar';
 import api from '../api/axios';
-import BackButton from '../components/BackButton';
 import { formatSlotDateOnly, formatSlotTime } from '../utils/timeUtils';
 import 'react-calendar/dist/Calendar.css';
 import '../styles/calendar.css';
@@ -12,21 +11,6 @@ const meetingWindow = {
   end: '19:00',
   maxSlots: 42,
 };
-
-const getSlotDateTime = (slot, key) => {
-  const value = slot?.[key];
-  const timestamp = value ? new Date(String(value).replace(' ', 'T')).getTime() : Number.POSITIVE_INFINITY;
-
-  return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
-};
-
-const sortSlotsByTime = (items = []) => (
-  [...items].sort((left, right) => (
-    getSlotDateTime(left, 'start_time') - getSlotDateTime(right, 'start_time')
-    || getSlotDateTime(left, 'end_time') - getSlotDateTime(right, 'end_time')
-    || Number(left?.id || 0) - Number(right?.id || 0)
-  ))
-);
 
 const MyTimesPage = () => {
   const [form, setForm] = useState({
@@ -47,7 +31,7 @@ const MyTimesPage = () => {
 
   useEffect(() => {
     const dateStr = selectedDate.toDateString();
-    const filteredSlots = sortSlotsByTime(slots.filter(slot => formatSlotDateOnly(slot.start_time) === dateStr));
+    const filteredSlots = slots.filter(slot => formatSlotDateOnly(slot.start_time) === dateStr);
     setSelectedDateSlots(filteredSlots);
   }, [slots, selectedDate]);
 
@@ -57,7 +41,7 @@ const MyTimesPage = () => {
       const response = await api.get('/teacher/slots', {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
-      setSlots(sortSlotsByTime(response.data || []));
+      setSlots(response.data || []);
     } catch (error) {
       console.error('Error fetching slots:', error);
       setSlots([]);
@@ -212,7 +196,6 @@ const MyTimesPage = () => {
   return (
     <div className="App">
       <main className="page-shell">
-        <BackButton className="page-panel-back-button" />
         <header className="page-header">
           <h1 className="page-title">{t('myTimes.title')}</h1>
           <p className="page-subtitle">{t('myTimes.subtitle')}</p>

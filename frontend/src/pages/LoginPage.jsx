@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
 
 const LoginPage = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [mode, setMode] = useState('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -26,7 +26,7 @@ const LoginPage = () => {
         localStorage.setItem('userEmail', res.data.teacher.email);
         navigate('/teacher/dashboard');
       } else {
-        const res = await api.post('/auth/teacher/register', { name, email, password, subject, room, language: i18n.language });
+        const res = await api.post('/auth/teacher/register', { name, email, password, subject, room });
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('userType', 'teacher');
         localStorage.setItem('userName', res.data.teacher.name);
@@ -81,13 +81,6 @@ const LoginPage = () => {
             <button className="button-primary" type="submit">
               {mode === 'login' ? t('login.login') : t('login.register')}
             </button>
-            {mode === 'login' && (
-              <p className="form-note">
-                <Link className="link-button-inline" to="/teacher/forgot-password">
-                  {t('passwordReset.forgotPassword')}
-                </Link>
-              </p>
-            )}
             <p className="form-note">
               <button type="button" className="link-button-inline" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
                 {mode === 'login' ? t('login.switchToRegister') : t('login.switchToLogin')}

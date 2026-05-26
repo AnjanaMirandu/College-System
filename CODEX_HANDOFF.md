@@ -1,94 +1,51 @@
-# Codex Handoff — College System Vercel URL
+# Codex Handoff - College System Frontend
 
-Anji wants this to be treated as the only requested frontend URL in project notes/config:
+Anji wants the live frontend to match this old Vercel deployment snapshot exactly:
 
 ```text
 https://frontend-ex19w842f-anjanamirandus-projects.vercel.app/
 ```
 
-## Critical Vercel limitation
+## Important Vercel Limitation
 
-This URL is an immutable Vercel deployment snapshot URL. It currently exists and loads, but Vercel does **not** allow it to be added/reassigned as a reusable project domain or alias.
+That URL is an immutable Vercel deployment URL. It can still be opened, but Vercel does not allow it to be reassigned as the domain for a new deployment.
 
 Verified Vercel CLI result:
-
-```text
-npx vercel domains add frontend-ex19w842f-anjanamirandus-projects.vercel.app
-Error: The chosen alias "frontend-ex19w842f-anjanamirandus-projects.vercel.app" is a deployment URL. (403)
-```
-
-Also verified:
 
 ```text
 npx vercel alias set <latest-deployment> frontend-ex19w842f-anjanamirandus-projects.vercel.app
 Error: The chosen alias "frontend-ex19w842f-anjanamirandus-projects.vercel.app" is a deployment URL.
 ```
 
-So: keep project documentation/config references aligned to Anji's requested URL, but do not waste time trying to make Vercel reassign that exact deployment URL to new builds. Vercel blocks it.
+So the correct fix is to keep the old snapshot's source code in GitHub and deploy it to the active frontend project/domain.
 
-## Cleanup already done
+## Current Frontend Source
 
-The extra custom alias that was created earlier was removed and now returns `DEPLOYMENT_NOT_FOUND` / 404.
-
-## Current project location
-
-Windows/VS Code folder:
-
-```text
-C:\Users\suraj\OneDrive\Desktop\College System
-```
-
-WSL path equivalent:
-
-```text
-/mnt/c/Users/suraj/OneDrive/Desktop/College System
-```
-
-Frontend folder:
-
-```text
-frontend
-```
-
-Backend folder:
-
-```text
-backend
-```
-
-## Frontend build state
-
-The active source code uses Vite, not Create React App.
+The frontend has intentionally been restored to the old Create React App source that matches the snapshot design.
 
 Frontend commands from `frontend/`:
 
 ```bash
-npm install
+npm ci --legacy-peer-deps
 npm run build
-npx vercel deploy --prod --yes
 ```
 
-Config:
+Build config:
 
+- Framework: Create React App
 - Build command: `npm run build`
-- Output directory: `dist`
+- Output directory: `build`
+- Root deployment config output directory: `frontend/build`
 - SPA rewrite: all routes to `/index.html`
-- Env var: `VITE_API_URL`, not `REACT_APP_API_URL`
+- API env var: `REACT_APP_API_URL`
 
-## Vercel warning/error status
+Do not change this project back to Vite unless Anji explicitly asks for a redesign/new version.
 
-Latest normal production Vercel build from GitHub has no build errors:
+## Public URL Guidance
 
-```text
-cd frontend && npm ci
-found 0 vulnerabilities
-vite build
-✓ built successfully
-```
+Use the stable assigned frontend URL for the live deploy. The old `frontend-ex19w842f...` URL is useful only as a visual reference because it is a frozen Vercel snapshot.
 
-The old requested deployment URL still shows the old Create React App build because deployment snapshot URLs are immutable. That cannot be changed without Vercel generating a different deployment URL.
-
-## Verification checklist
+## Verification Checklist
 
 After changes, verify locally:
 
@@ -97,10 +54,8 @@ cd frontend
 npm run build
 ```
 
-Then verify Anji's requested URL is reachable:
+Then deploy the frontend and compare the live page against:
 
 ```text
 https://frontend-ex19w842f-anjanamirandus-projects.vercel.app/
 ```
-
-Expected current behavior: HTTP 200, but old CRA snapshot content because Vercel will not reassign that URL to the new Vite build.

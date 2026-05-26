@@ -51,8 +51,8 @@ SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 JWT_SECRET=your_secret_key
-CLIENT_URL=https://frontend-ex19w842f-anjanamirandus-projects.vercel.app
-FRONTEND_URL=https://frontend-ex19w842f-anjanamirandus-projects.vercel.app
+CLIENT_URL=https://college-system-anjanamirandu.vercel.app
+FRONTEND_URL=https://college-system-anjanamirandu.vercel.app
 ```
 
 The backend should run on:
@@ -75,7 +75,13 @@ It should show:
 
 ### Frontend
 
-The frontend is deployed on Vercel. The single public frontend URL is:
+The live frontend is deployed at:
+
+```text
+https://college-system-anjanamirandu.vercel.app
+```
+
+The old Vercel snapshot that the live frontend should visually match is:
 
 ```text
 https://frontend-ex19w842f-anjanamirandus-projects.vercel.app
@@ -109,7 +115,7 @@ backend/db/schema.sql
 
 This project is deployed as two separate Vercel projects.
 
-For the live version, use `https://frontend-ex19w842f-anjanamirandus-projects.vercel.app`, not `localhost`.
+For the live version, use the active Vercel frontend domain. The old `frontend-ex19w842f...` URL is an immutable snapshot and is kept as the visual reference.
 
 ### Backend Deployment
 
@@ -129,8 +135,8 @@ SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 JWT_SECRET=your_secret_key
-CLIENT_URL=https://frontend-ex19w842f-anjanamirandus-projects.vercel.app
-FRONTEND_URL=https://frontend-ex19w842f-anjanamirandus-projects.vercel.app
+CLIENT_URL=https://college-system-anjanamirandu.vercel.app
+FRONTEND_URL=https://college-system-anjanamirandu.vercel.app
 ```
 
 For Gmail email sending:
@@ -149,21 +155,23 @@ https://your-backend-domain.vercel.app/health
 
 ### Frontend Deployment
 
-Deploy the `frontend` folder as the frontend project.
+Deploy the `frontend` folder as the frontend project. The frontend intentionally uses Create React App so it matches the old Vercel snapshot design.
 
 Important Vercel settings:
 
 - Root directory: `frontend`
+- Framework preset: Create React App
+- Install command: `npm ci --legacy-peer-deps`
 - Build command: `npm run build`
-- Output directory: `dist`
+- Output directory: `build`
 
 Frontend environment variable:
 
 ```env
-VITE_API_URL=https://your-backend-domain.vercel.app/api
+REACT_APP_API_URL=https://your-backend-domain.vercel.app/api
 ```
 
-If the backend URL changes, update `VITE_API_URL` and redeploy the frontend.
+If the backend URL changes, update `REACT_APP_API_URL` and redeploy the frontend.
 
 ## Test Login
 

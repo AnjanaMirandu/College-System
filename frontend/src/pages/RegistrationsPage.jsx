@@ -1,23 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../api/axios';
-import Navbar from '../components/Navbar';
 import { formatSlotDateTime } from '../utils/timeUtils';
-
-const getSlotTime = (registration, key) => {
-  const value = registration?.slots?.[key];
-  const timestamp = value ? new Date(String(value).replace(' ', 'T')).getTime() : Number.POSITIVE_INFINITY;
-
-  return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
-};
-
-const sortRegistrationsBySlotTime = (items = []) => (
-  [...items].sort((left, right) => (
-    getSlotTime(left, 'start_time') - getSlotTime(right, 'start_time')
-    || getSlotTime(left, 'end_time') - getSlotTime(right, 'end_time')
-    || Number(left?.id || 0) - Number(right?.id || 0)
-  ))
-);
 
 const RegistrationsPage = () => {
   const { t } = useTranslation();
@@ -26,7 +10,7 @@ const RegistrationsPage = () => {
   useEffect(() => {
     api.get('/teacher/registrations', {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    }).then(res => setRegistrations(sortRegistrationsBySlotTime(res.data)));
+    }).then(res => setRegistrations(res.data));
   }, []);
 
   const cancelRegistration = async (id) => {
@@ -42,7 +26,6 @@ const RegistrationsPage = () => {
 
   return (
     <div className="App">
-      <Navbar />
       <main className="page-shell">
         <header className="page-header">
           <h1 className="page-title">{t('registrations.title')}</h1>
