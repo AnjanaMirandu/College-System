@@ -1,5 +1,13 @@
 const nodemailer = require('nodemailer');
 
+class EmailDeliveryError extends Error {
+  constructor(message, cause) {
+    super(cause?.message ? `${message} ${cause.message}` : message);
+    this.name = 'EmailDeliveryError';
+    this.cause = cause;
+  }
+}
+
 const getMailConfig = () => {
   const user = process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER;
   const rawPass = process.env.SMTP_PASS || process.env.EMAIL_PASS || process.env.GMAIL_APP_PASSWORD;
@@ -11,19 +19,24 @@ const getMailConfig = () => {
   return {
     host,
     port,
-    secure: String(process.env.SMTP_SECURE || 'true') !== 'false',
+    secure: process.env.SMTP_SECURE
+      ? String(process.env.SMTP_SECURE).toLowerCase() !== 'false'
+      : port === 465,
     user,
     pass,
     from: process.env.MAIL_FROM || process.env.SMTP_FROM || user,
   };
 };
 
-const createTransporter = () => {
-  const config = getMailConfig();
-
+const assertMailConfig = (config = getMailConfig()) => {
   if (!config.host || !config.user || !config.pass || !config.from) {
     throw new Error('Email is not configured. Set SMTP_USER and SMTP_PASS or GMAIL_USER and GMAIL_APP_PASSWORD.');
   }
+};
+
+const createTransporter = () => {
+  const config = getMailConfig();
+  assertMailConfig(config);
 
   return nodemailer.createTransport({
     host: config.host,
@@ -33,7 +46,37 @@ const createTransporter = () => {
       user: config.user,
       pass: config.pass,
     },
+    connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 10000),
+    greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 10000),
+    socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 20000),
+    tls: {
+      servername: config.host,
+    },
   });
+};
+
+const sleep = (ms) => new Promise((resolve) => {
+  setTimeout(resolve, ms);
+});
+
+const getRetryAttempts = () => {
+  const attempts = Number(process.env.MAIL_RETRY_ATTEMPTS || 3);
+  return Number.isInteger(attempts) && attempts > 0 ? attempts : 3;
+};
+
+const getRetryDelayMs = () => {
+  const delay = Number(process.env.MAIL_RETRY_DELAY_MS || 750);
+  return Number.isFinite(delay) && delay >= 0 ? delay : 750;
+};
+
+const shouldRetryEmailError = (error) => {
+  const code = String(error?.code || '');
+  const responseCode = Number(error?.responseCode || 0);
+
+  return (
+    ['ETIMEDOUT', 'ECONNECTION', 'ECONNRESET', 'ESOCKET', 'EAI_AGAIN'].includes(code)
+    || [421, 450, 451, 452, 454].includes(responseCode)
+  );
 };
 
 const getFrontendUrl = () => (
@@ -79,16 +122,48 @@ const renderEmailShell = ({ heading, subtitle, children, footer }) => `
   </div>
 `;
 
-const sendMail = async ({ to, subject, text, html }) => {
+const sendMailOnce = async ({ to, subject, text, html }) => {
+  const config = getMailConfig();
   const transporter = createTransporter();
-
-  await transporter.sendMail({
-    from: getMailConfig().from,
+  const info = await transporter.sendMail({
+    from: config.from,
     to,
     subject,
     text,
     html,
   });
+
+  const accepted = Array.isArray(info.accepted) ? info.accepted : [];
+  const rejected = Array.isArray(info.rejected) ? info.rejected : [];
+  const pending = Array.isArray(info.pending) ? info.pending : [];
+
+  if (!accepted.length || rejected.length || pending.length) {
+    throw new EmailDeliveryError(`Email was not accepted by the SMTP server for ${to}.`);
+  }
+
+  return info;
+};
+
+const sendMail = async (mail) => {
+  const attempts = getRetryAttempts();
+  const retryDelayMs = getRetryDelayMs();
+  let lastError;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await sendMailOnce(mail);
+    } catch (error) {
+      lastError = error;
+
+      if (attempt >= attempts || !shouldRetryEmailError(error)) {
+        break;
+      }
+
+      await sleep(retryDelayMs * attempt);
+    }
+  }
+
+  throw new EmailDeliveryError('Email delivery failed after retrying.', lastError);
 };
 
 const getPasswordResetCopy = ({ name, resetUrl, accountType, language }) => {
@@ -505,4 +580,9 @@ const sendMeetingReminderEmail = async ({
   });
 };
 
-module.exports = { sendPasswordResetEmail, sendWelcomeEmail, sendMeetingReminderEmail };
+module.exports = {
+  assertMailConfig,
+  sendPasswordResetEmail,
+  sendWelcomeEmail,
+  sendMeetingReminderEmail,
+};

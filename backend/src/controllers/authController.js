@@ -1,7 +1,12 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const supabase = require('../config/db');
-const { sendPasswordResetEmail, sendWelcomeEmail } = require('../services/emailService');
+const {
+  assertMailConfig,
+  sendPasswordResetEmail,
+  sendWelcomeEmail,
+} = require('../services/emailService');
+const { assertValidEmailForDelivery } = require('../utils/emailValidation');
 
 const createToken = (payload) => jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
 const createPasswordResetToken = (payload) => jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '30m' });
@@ -60,7 +65,15 @@ const getResetTable = (accountType) => {
   return '';
 };
 
-const sendWelcomeEmailSafely = async ({ user, accountType, language }) => {
+const deleteNewAccount = async ({ table, id, accountType }) => {
+  const { error } = await supabase.from(table).delete().eq('id', id);
+
+  if (error) {
+    console.error(`Failed to roll back ${accountType} account after email failure:`, error.message);
+  }
+};
+
+const sendWelcomeEmailRequired = async ({ user, accountType, language }) => {
   try {
     await sendWelcomeEmail({
       to: user.email,
@@ -70,6 +83,7 @@ const sendWelcomeEmailSafely = async ({ user, accountType, language }) => {
     });
   } catch (mailError) {
     console.error(`${accountType} welcome email failed:`, mailError.message);
+    throw mailError;
   }
 };
 
@@ -114,6 +128,15 @@ const registerTeacher = async (req, res) => {
     return res.status(400).json({ message: 'Name, email, and password are required' });
   }
 
+  try {
+    assertMailConfig();
+  } catch (mailConfigError) {
+    console.error('Teacher registration blocked because email is not configured:', mailConfigError.message);
+    return res.status(503).json({
+      message: 'Email sending is not configured. Please contact the school administrator before creating accounts.',
+    });
+  }
+
   const { data: existingTeacher, error: existingError } = await supabase
     .from('teachers')
     .select('id')
@@ -139,9 +162,17 @@ const registerTeacher = async (req, res) => {
     return res.status(500).json({ message: error?.message || 'Unable to create teacher account' });
   }
 
+  try {
+    await sendWelcomeEmailRequired({ user: data, accountType: 'teacher', language });
+  } catch {
+    await deleteNewAccount({ table: 'teachers', id: data.id, accountType: 'teacher' });
+    return res.status(502).json({
+      message: 'Unable to send the welcome email. The account was not created. Please try again in a moment.',
+    });
+  }
+
   await recordLoginEvent({ userId: data.id, userType: 'teacher', email: data.email });
-  await sendWelcomeEmailSafely({ user: data, accountType: 'teacher', language });
-  res.json(buildAuthResponse(data, 'teacher'));
+  res.json({ ...buildAuthResponse(data, 'teacher'), welcomeEmailSent: true });
 };
 
 const loginParent = async (req, res) => {
@@ -183,6 +214,21 @@ const registerParent = async (req, res) => {
 
   if (!name || !email || !password || !childName || !childClass) {
     return res.status(400).json({ message: 'Name, email, password, child name, and class are required' });
+  }
+
+  try {
+    await assertValidEmailForDelivery(email);
+  } catch (emailError) {
+    return res.status(emailError.statusCode || 400).json({ message: emailError.message });
+  }
+
+  try {
+    assertMailConfig();
+  } catch (mailConfigError) {
+    console.error('Parent registration blocked because email is not configured:', mailConfigError.message);
+    return res.status(503).json({
+      message: 'Email sending is not configured. Please contact the school administrator before creating accounts.',
+    });
   }
 
   const { data: existingParent, error: existingError } = await supabase
@@ -241,9 +287,17 @@ const registerParent = async (req, res) => {
     return res.status(500).json({ message: error?.message || 'Unable to create parent account' });
   }
 
+  try {
+    await sendWelcomeEmailRequired({ user: data, accountType: 'parent', language });
+  } catch {
+    await deleteNewAccount({ table: 'parents', id: data.id, accountType: 'parent' });
+    return res.status(502).json({
+      message: 'Unable to send the welcome email. The account was not created. Please try again in a moment.',
+    });
+  }
+
   await recordLoginEvent({ userId: data.id, userType: 'parent', email: data.email });
-  await sendWelcomeEmailSafely({ user: data, accountType: 'parent', language });
-  res.json(buildAuthResponse(data, 'parent'));
+  res.json({ ...buildAuthResponse(data, 'parent'), welcomeEmailSent: true });
 };
 
 const loginAdmin = async (req, res) => {
@@ -271,6 +325,12 @@ const requestPasswordReset = async (req, res) => {
 
   if (!table || !email) {
     return res.status(400).json({ message: 'Account type and email are required' });
+  }
+
+  try {
+    await assertValidEmailForDelivery(email);
+  } catch (emailError) {
+    return res.status(emailError.statusCode || 400).json({ message: emailError.message });
   }
 
   const { data: user, error } = await supabase

@@ -29,17 +29,72 @@ const formatLocalDateTime = (date) => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
+const compareDateTimeValues = (left, right) => {
+  const leftValue = left || '';
+  const rightValue = right || '';
+
+  if (leftValue !== rightValue) {
+    return String(leftValue).localeCompare(String(rightValue));
+  }
+
+  return 0;
+};
+
+const compareRegistrationsBySlotTime = (left, right) => (
+  compareDateTimeValues(left?.slots?.start_time, right?.slots?.start_time)
+  || compareDateTimeValues(left?.slots?.end_time, right?.slots?.end_time)
+  || compareDateTimeValues(left?.created_at, right?.created_at)
+  || Number(left?.id || 0) - Number(right?.id || 0)
+);
+
+const toVilniusDateTimeLocal = (date = new Date()) => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Vilnius',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}T${value.hour}:${value.minute}`;
+};
+
+const toComparableDateTimeLocal = (value) => {
+  if (!value) {
+    return '';
+  }
+
+  const stringValue = String(value);
+  if (/[zZ]|[+-]\d{2}:\d{2}$/.test(stringValue)) {
+    const date = new Date(stringValue);
+    return Number.isNaN(date.getTime()) ? '' : toVilniusDateTimeLocal(date);
+  }
+
+  return stringValue.slice(0, 16);
+};
+
+const isRegistrationOpenNow = (settings) => {
+  if (!settings?.is_open) {
+    return false;
+  }
+
+  const now = toVilniusDateTimeLocal();
+  const opensAt = toComparableDateTimeLocal(settings.opens_at);
+  const closesAt = toComparableDateTimeLocal(settings.closes_at);
+
+  return (!opensAt || opensAt <= now) && (!closesAt || closesAt >= now);
+};
+
 const normalizeRegistrationSettings = (settings) => {
-  const now = new Date();
-  const opensAt = settings?.opens_at ? new Date(settings.opens_at) : null;
-  const closesAt = settings?.closes_at ? new Date(settings.closes_at) : null;
-  const withinDates = (!opensAt || opensAt <= now) && (!closesAt || closesAt >= now);
   return {
     id: settings?.id || 1,
     is_open: Boolean(settings?.is_open),
     opens_at: settings?.opens_at || '',
     closes_at: settings?.closes_at || '',
-    is_active_now: Boolean(settings?.is_open && withinDates),
+    is_active_now: isRegistrationOpenNow(settings),
     updated_at: settings?.updated_at || '',
     schema_missing: Boolean(settings?.schema_missing),
   };
@@ -124,10 +179,10 @@ const getDashboard = async (req, res) => {
     supabase.from('parents').select('*', { count: 'exact', head: true }),
     supabase.from('slots').select('*', { count: 'exact', head: true }),
     supabase.from('registrations').select('*', { count: 'exact', head: true }),
-    supabase.from('teachers').select('id, name, subject, room, email, created_at').order('created_at', { ascending: false }),
-    supabase.from('parents').select('id, name, email, created_at').order('created_at', { ascending: false }),
-    supabase.from('slots').select('id, teacher_id, start_time, end_time, is_booked, teachers(name, subject)').order('start_time', { ascending: false }),
-    supabase.from('registrations').select('id, teacher_id, slot_id, parent_name, parent_email, parent_phone, child_name, child_class, note, status, cancel_reason, created_at, teachers(name), slots(start_time, end_time)').order('created_at', { ascending: false }),
+    supabase.from('teachers').select('id, name, subject, room, email, created_at').order('created_at', { ascending: true }),
+    supabase.from('parents').select('id, name, email, created_at').order('created_at', { ascending: true }),
+    supabase.from('slots').select('id, teacher_id, start_time, end_time, is_booked, teachers(name, subject)').order('start_time', { ascending: true }),
+    supabase.from('registrations').select('id, teacher_id, slot_id, parent_name, parent_email, parent_phone, child_name, child_class, note, status, cancel_reason, created_at, teachers(name), slots(start_time, end_time)'),
     getRegistrationSettingsRecord(),
   ]);
 
@@ -169,7 +224,7 @@ const getDashboard = async (req, res) => {
     teachers: teachers || [],
     parents: parents || [],
     slots: slots || [],
-    registrations: registrations || [],
+    registrations: [...(registrations || [])].sort(compareRegistrationsBySlotTime),
     registrationSettings: normalizeRegistrationSettings(registrationSettings),
   });
 };
@@ -238,12 +293,15 @@ const generateAdminSlots = async (req, res) => {
     return;
   }
 
-  const { teacherId, date, startTime, endTime } = req.body;
-  const numericTeacherId = Number(teacherId);
+  const { teacherId, teacherIds, date, startTime, endTime } = req.body;
+  const rawTeacherIds = Array.isArray(teacherIds) && teacherIds.length ? teacherIds : [teacherId];
+  const numericTeacherIds = [...new Set(rawTeacherIds
+    .map((id) => Number(id))
+    .filter((id) => Number.isInteger(id) && id > 0))];
   const minutes = 10;
 
-  if (!numericTeacherId || Number.isNaN(numericTeacherId) || !date || !startTime || !endTime) {
-    return res.status(400).json({ message: 'Teacher, date, start time, and end time are required' });
+  if (!numericTeacherIds.length || !date || !startTime || !endTime) {
+    return res.status(400).json({ message: 'Select at least one teacher, date, start time, and end time' });
   }
 
   const timeRegex = /^\d{2}:\d{2}$/;
@@ -269,25 +327,29 @@ const generateAdminSlots = async (req, res) => {
     return res.status(400).json({ message: `A maximum of ${meetingWindow.maxSlots} slots can be created at once` });
   }
 
-  const { data: teacher, error: teacherError } = await supabase
+  const { data: teachers, error: teacherError } = await supabase
     .from('teachers')
     .select('id, name')
-    .eq('id', numericTeacherId)
-    .maybeSingle();
+    .in('id', numericTeacherIds);
 
-  if (teacherError || !teacher) {
-    return res.status(404).json({ message: 'Teacher not found' });
+  if (teacherError) {
+    return res.status(500).json({ message: 'Unable to load selected teachers' });
+  }
+  if (!teachers || teachers.length !== numericTeacherIds.length) {
+    return res.status(404).json({ message: 'One or more selected teachers were not found' });
   }
 
-  const slots = Array.from({ length: slotCount }).map((_, index) => {
-    const slotStart = new Date(start.getTime() + index * minutes * 60000);
-    const slotEnd = new Date(slotStart.getTime() + minutes * 60000);
-    return {
-      teacher_id: numericTeacherId,
-      start_time: formatLocalDateTime(slotStart),
-      end_time: formatLocalDateTime(slotEnd),
-    };
-  });
+  const slots = numericTeacherIds.flatMap((numericTeacherId) => (
+    Array.from({ length: slotCount }).map((_, index) => {
+      const slotStart = new Date(start.getTime() + index * minutes * 60000);
+      const slotEnd = new Date(slotStart.getTime() + minutes * 60000);
+      return {
+        teacher_id: numericTeacherId,
+        start_time: formatLocalDateTime(slotStart),
+        end_time: formatLocalDateTime(slotEnd),
+      };
+    })
+  ));
 
   const { data, error } = await supabase
     .from('slots')
@@ -303,8 +365,8 @@ const generateAdminSlots = async (req, res) => {
     action: 'generate_slots',
     targetType: 'slot_batch',
     details: {
-      teacher_id: numericTeacherId,
-      teacher_name: teacher.name,
+      teacher_ids: numericTeacherIds,
+      teacher_names: teachers.map((teacher) => teacher.name),
       date,
       start_time: startTime,
       end_time: endTime,
@@ -314,8 +376,9 @@ const generateAdminSlots = async (req, res) => {
   });
 
   res.json({
-    message: `Created ${data?.length || 0} slot(s)`,
+    message: `Created ${data?.length || 0} slot(s) for ${numericTeacherIds.length} teacher(s)`,
     created: data?.length || 0,
+    teacher_count: numericTeacherIds.length,
     slots: data || [],
   });
 };

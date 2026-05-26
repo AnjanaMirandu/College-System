@@ -13,6 +13,8 @@ import ParentRegisterPage from './pages/ParentRegisterPage';
 import ParentDashboardPage from './pages/ParentDashboardPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 const getFallbackPath = (userType) => {
   if (userType === 'teacher') {
@@ -47,9 +49,12 @@ function App() {
           <Route path="/book/:slotId" element={<RequireParent><BookingFormPage /></RequireParent>} />
           <Route path="/login" element={<Navigate to="/teacher/login" replace />} />
           <Route path="/teacher/login" element={<LoginPage />} />
+          <Route path="/teacher/forgot-password" element={<ForgotPasswordPage accountType="teacher" />} />
           <Route path="/teacher/register" element={<TeacherRegisterPage />} />
           <Route path="/parent/login" element={<ParentLoginPage />} />
+          <Route path="/parent/forgot-password" element={<ForgotPasswordPage accountType="parent" />} />
           <Route path="/parent/register" element={<ParentRegisterPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/parent/dashboard" element={<ParentDashboardPage />} />
           <Route path="/admin/login" element={<AdminLoginPage />} />
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />

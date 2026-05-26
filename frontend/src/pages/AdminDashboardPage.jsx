@@ -18,6 +18,7 @@ const emptyTeacherForm = {
 
 const emptySlotForm = {
   teacherId: '',
+  teacherIds: [],
   startTime: '',
   endTime: '',
   numSlots: '',
@@ -53,6 +54,42 @@ const toDateTimeLocal = (value) => {
   const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return offsetDate.toISOString().slice(0, 16);
 };
+
+const getDateTimeValue = (value) => {
+  if (!value) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const normalized = String(value).replace(' ', 'T');
+  const timestamp = new Date(normalized).getTime();
+  return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
+};
+
+const compareByCreatedAt = (left, right) => (
+  getDateTimeValue(left?.created_at) - getDateTimeValue(right?.created_at)
+  || Number(left?.id || 0) - Number(right?.id || 0)
+);
+
+const compareBySlotTime = (left, right) => (
+  getDateTimeValue(left?.start_time) - getDateTimeValue(right?.start_time)
+  || getDateTimeValue(left?.end_time) - getDateTimeValue(right?.end_time)
+  || Number(left?.id || 0) - Number(right?.id || 0)
+);
+
+const compareRegistrationBySlotTime = (left, right) => (
+  getDateTimeValue(left?.slots?.start_time) - getDateTimeValue(right?.slots?.start_time)
+  || getDateTimeValue(left?.slots?.end_time) - getDateTimeValue(right?.slots?.end_time)
+  || getDateTimeValue(left?.created_at) - getDateTimeValue(right?.created_at)
+  || Number(left?.id || 0) - Number(right?.id || 0)
+);
+
+const sortDashboardData = (dashboardData) => ({
+  ...dashboardData,
+  teachers: [...(dashboardData.teachers || [])].sort(compareByCreatedAt),
+  parents: [...(dashboardData.parents || [])].sort(compareByCreatedAt),
+  slots: [...(dashboardData.slots || [])].sort(compareBySlotTime),
+  registrations: [...(dashboardData.registrations || [])].sort(compareRegistrationBySlotTime),
+});
 
 const parseDelimitedTeachers = (text) => {
   const lines = text
@@ -100,6 +137,8 @@ const looksStructured = (text) => {
   return /name\s*[,;]\s*email\s*[,;]\s*subject\s*[,;]\s*room\s*[,;]\s*password/i.test(trimmed);
 };
 
+// Kept for older picker markup that may be reintroduced later.
+// eslint-disable-next-line no-unused-vars
 const TeacherSearchPicker = ({
   label,
   teachers,
@@ -204,40 +243,54 @@ const AdminDashboardPage = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedSlotIds, setSelectedSlotIds] = useState([]);
   const [selectedTeacherIds, setSelectedTeacherIds] = useState([]);
+  const [selectedScheduleTeacherId, setSelectedScheduleTeacherId] = useState('');
   const [selectedParentIds, setSelectedParentIds] = useState([]);
   const [registrationForm, setRegistrationForm] = useState({
     isOpen: false,
     opensAt: '',
     closesAt: '',
   });
+  const [registrationFormDirty, setRegistrationFormDirty] = useState(false);
   const [importText, setImportText] = useState('');
   const [importFileName, setImportFileName] = useState('');
   const [slotTeacherSearch, setSlotTeacherSearch] = useState('');
+  const [slotSubjectFilter, setSlotSubjectFilter] = useState('');
+  // eslint-disable-next-line no-unused-vars
   const [activeTeacherPicker, setActiveTeacherPicker] = useState('');
   const [lastUpdated, setLastUpdated] = useState('');
+  const [scheduleSubjectFilter, setScheduleSubjectFilter] = useState('');
+  const [scheduleTeacherSearch, setScheduleTeacherSearch] = useState('');
+  const scheduleSectionRef = useRef(null);
   const navigate = useNavigate();
 
   const loadDashboard = useCallback(async () => {
     try {
       const res = await api.get('/admin/dashboard');
-      setData(res.data);
+      const nextData = sortDashboardData(res.data);
+      setData(nextData);
       setSelectedSlotIds((prev) => {
-        const availableIds = new Set((res.data.slots || []).map((slot) => slot.id));
+        const availableIds = new Set((nextData.slots || []).map((slot) => slot.id));
         return prev.filter((id) => availableIds.has(id));
       });
       setSelectedTeacherIds((prev) => {
-        const availableIds = new Set((res.data.teachers || []).map((teacher) => teacher.id));
+        const availableIds = new Set((nextData.teachers || []).map((teacher) => teacher.id));
         return prev.filter((id) => availableIds.has(id));
+      });
+      setSelectedScheduleTeacherId((prev) => {
+        const teacherExists = (nextData.teachers || []).some((teacher) => String(teacher.id) === String(prev));
+        return teacherExists ? prev : '';
       });
       setSelectedParentIds((prev) => {
-        const availableIds = new Set((res.data.parents || []).map((parent) => parent.id));
+        const availableIds = new Set((nextData.parents || []).map((parent) => parent.id));
         return prev.filter((id) => availableIds.has(id));
       });
-      setRegistrationForm({
-        isOpen: Boolean(res.data.registrationSettings?.is_open),
-        opensAt: toDateTimeLocal(res.data.registrationSettings?.opens_at),
-        closesAt: toDateTimeLocal(res.data.registrationSettings?.closes_at),
-      });
+      if (!registrationFormDirty) {
+        setRegistrationForm({
+          isOpen: Boolean(res.data.registrationSettings?.is_open),
+          opensAt: toDateTimeLocal(res.data.registrationSettings?.opens_at),
+          closesAt: toDateTimeLocal(res.data.registrationSettings?.closes_at),
+        });
+      }
       setLastUpdated(new Date().toLocaleTimeString());
       setError('');
     } catch (err) {
@@ -247,26 +300,23 @@ const AdminDashboardPage = () => {
         navigate('/admin/login');
       }
     }
-  }, [navigate, t]);
+  }, [navigate, registrationFormDirty, t]);
 
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
 
   useEffect(() => {
-    if (!slotForm.teacherId) {
-      return;
-    }
-
-    const selectedTeacher = data.teachers.find((teacher) => String(teacher.id) === String(slotForm.teacherId));
-    if (selectedTeacher) {
-      setSlotTeacherSearch(formatTeacherOption(selectedTeacher, t));
-      return;
-    }
-
-    setSlotForm((prev) => ({ ...prev, teacherId: '' }));
-    setSlotTeacherSearch('');
-  }, [data.teachers, slotForm.teacherId, t]);
+    setSlotForm((prev) => {
+      const availableIds = new Set(data.teachers.map((teacher) => String(teacher.id)));
+      const teacherIds = (prev.teacherIds || []).filter((id) => availableIds.has(String(id)));
+      return {
+        ...prev,
+        teacherIds,
+        teacherId: teacherIds[0] || '',
+      };
+    });
+  }, [data.teachers]);
 
   useEffect(() => {
     const handleFocus = () => {
@@ -318,18 +368,112 @@ const AdminDashboardPage = () => {
     }
   }, [importText]);
 
-  const selectedTeacherSlots = useMemo(() => (
-    data.slots.filter((slot) => (
-      !slotForm.teacherId || String(slot.teacher_id) === String(slotForm.teacherId)
-    ))
-  ), [data.slots, slotForm.teacherId]);
+  const teachersById = useMemo(() => (
+    new Map(data.teachers.map((teacher) => [String(teacher.id), teacher]))
+  ), [data.teachers]);
+
+  const selectedTeacherSlots = useMemo(() => {
+    if (!slotForm.teacherIds?.length) {
+      return [];
+    }
+
+    return data.slots.filter((slot) => (
+      slotForm.teacherIds.some((teacherId) => String(slot.teacher_id) === String(teacherId))
+    ));
+  }, [data.slots, slotForm.teacherIds]);
 
   const selectedDateSlots = useMemo(() => {
     const selectedDateString = selectedDate.toDateString();
     return selectedTeacherSlots
       .filter((slot) => formatSlotDateOnly(slot.start_time) === selectedDateString)
-      .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+      .sort(compareBySlotTime);
   }, [selectedDate, selectedTeacherSlots]);
+
+  const slotSubjects = useMemo(() => (
+    [...new Set(data.teachers.map((teacher) => teacher.subject).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b))
+  ), [data.teachers]);
+
+  const slotTeacherOptions = useMemo(() => {
+    const query = slotTeacherSearch.trim().toLowerCase();
+
+    return data.teachers
+      .filter((teacher) => (
+        !slotSubjectFilter || teacher.subject === slotSubjectFilter
+      ))
+      .filter((teacher) => {
+        if (!query) {
+          return true;
+        }
+
+        return [
+          teacher.name,
+          teacher.email,
+          teacher.subject,
+          teacher.room,
+        ].some((value) => String(value || '').toLowerCase().includes(query));
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [data.teachers, slotSubjectFilter, slotTeacherSearch]);
+
+  const selectedSlotTeachers = useMemo(() => (
+    data.teachers.filter((teacher) => slotForm.teacherIds?.some((id) => String(id) === String(teacher.id)))
+  ), [data.teachers, slotForm.teacherIds]);
+
+  const registrationsBySlotId = useMemo(() => {
+    const activeRegistrations = data.registrations.filter((registration) => registration.status !== 'cancelled');
+    return new Map(activeRegistrations.map((registration) => [registration.slot_id, registration]));
+  }, [data.registrations]);
+
+  const selectedScheduleTeacher = useMemo(() => (
+    data.teachers.find((teacher) => String(teacher.id) === String(selectedScheduleTeacherId)) || null
+  ), [data.teachers, selectedScheduleTeacherId]);
+
+  const selectedScheduleSlots = useMemo(() => (
+    data.slots
+      .filter((slot) => String(slot.teacher_id) === String(selectedScheduleTeacherId))
+      .sort(compareBySlotTime)
+  ), [data.slots, selectedScheduleTeacherId]);
+
+  const scheduleSubjects = useMemo(() => (
+    [...new Set(data.teachers.map((teacher) => teacher.subject).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b))
+  ), [data.teachers]);
+
+  const scheduleTeacherOptions = useMemo(() => {
+    const query = scheduleTeacherSearch.trim().toLowerCase();
+
+    return data.teachers
+      .filter((teacher) => (
+        !scheduleSubjectFilter || teacher.subject === scheduleSubjectFilter
+      ))
+      .filter((teacher) => {
+        if (!query) {
+          return true;
+        }
+
+        return [
+          teacher.name,
+          teacher.email,
+          teacher.subject,
+          teacher.room,
+        ].some((value) => String(value || '').toLowerCase().includes(query));
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [data.teachers, scheduleSubjectFilter, scheduleTeacherSearch]);
+
+  const handleViewTeacherSchedule = (teacherId) => {
+    setSelectedScheduleTeacherId(String(teacherId));
+    window.requestAnimationFrame(() => {
+      scheduleSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  const handleScheduleSubjectChange = (value) => {
+    setScheduleSubjectFilter(value);
+    setScheduleTeacherSearch('');
+    setSelectedScheduleTeacherId('');
+  };
 
   const formatSelectedDate = () => {
     const year = selectedDate.getFullYear();
@@ -445,22 +589,48 @@ const AdminDashboardPage = () => {
 
   const handleSlotTeacherSearchChange = (value) => {
     setSlotTeacherSearch(value);
-    const selectedTeacher = data.teachers.find((teacher) => String(teacher.id) === String(slotForm.teacherId));
-    const selectedTeacherLabel = selectedTeacher ? formatTeacherOption(selectedTeacher, t) : '';
-
-    if (!value.trim() || value !== selectedTeacherLabel) {
-      setSlotForm((prev) => ({ ...prev, teacherId: '' }));
-    }
   };
 
   const handleSlotTeacherSelect = (teacher) => {
-    setSlotForm((prev) => ({ ...prev, teacherId: String(teacher.id) }));
-    setSlotTeacherSearch(formatTeacherOption(teacher, t));
-    setActiveTeacherPicker('');
+    const teacherId = String(teacher.id);
+    setSlotForm((prev) => {
+      const currentIds = prev.teacherIds || [];
+      const teacherIds = currentIds.includes(teacherId)
+        ? currentIds.filter((id) => id !== teacherId)
+        : [...currentIds, teacherId];
+
+      return {
+        ...prev,
+        teacherIds,
+        teacherId: teacherIds[0] || '',
+      };
+    });
+  };
+
+  const handleSlotSubjectChange = (value) => {
+    setSlotSubjectFilter(value);
+    setSlotTeacherSearch('');
+  };
+
+  const handleSelectAllSlotTeachers = () => {
+    setSlotForm((prev) => {
+      const optionIds = slotTeacherOptions.map((teacher) => String(teacher.id));
+      const allVisibleSelected = optionIds.length > 0 && optionIds.every((id) => prev.teacherIds?.includes(id));
+      const teacherIds = allVisibleSelected
+        ? (prev.teacherIds || []).filter((id) => !optionIds.includes(id))
+        : [...new Set([...(prev.teacherIds || []), ...optionIds])];
+
+      return {
+        ...prev,
+        teacherIds,
+        teacherId: teacherIds[0] || '',
+      };
+    });
   };
 
   const handleRegistrationFormChange = (e) => {
     const { name, value, type, checked } = e.target;
+    setRegistrationFormDirty(true);
     setRegistrationForm((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
@@ -481,16 +651,29 @@ const AdminDashboardPage = () => {
 
   const handleUpdateRegistrationSettings = async (e) => {
     e.preventDefault();
-    await runAction(
-      () => api.patch('/admin/registration-settings', registrationForm),
-      t('admin.registrationSettingsUpdated')
-    );
+    try {
+      const res = await api.patch('/admin/registration-settings', registrationForm);
+      setData((prev) => ({
+        ...prev,
+        registrationSettings: res.data.registrationSettings || prev.registrationSettings,
+      }));
+      setRegistrationForm({
+        isOpen: Boolean(res.data.registrationSettings?.is_open),
+        opensAt: toDateTimeLocal(res.data.registrationSettings?.opens_at),
+        closesAt: toDateTimeLocal(res.data.registrationSettings?.closes_at),
+      });
+      setRegistrationFormDirty(false);
+      setLastUpdated(new Date().toLocaleTimeString());
+      window.alert(t('admin.registrationSettingsUpdated'));
+    } catch (err) {
+      window.alert(err?.response?.data?.message || t('admin.unableCompleteAction'));
+    }
   };
 
   const handleGenerateSlots = async (e) => {
     e.preventDefault();
 
-    if (!slotForm.teacherId) {
+    if (!slotForm.teacherIds?.length) {
       window.alert(t('admin.selectTeacherForSlots'));
       return;
     }
@@ -508,6 +691,7 @@ const AdminDashboardPage = () => {
     const result = await runAction(
       () => api.post('/admin/slots/generate', {
         teacherId: slotForm.teacherId,
+        teacherIds: slotForm.teacherIds,
         date: formatSelectedDate(),
         startTime: slotForm.startTime,
         endTime: slotForm.endTime,
@@ -518,7 +702,8 @@ const AdminDashboardPage = () => {
     if (result) {
       setSlotForm((prev) => ({
         ...emptySlotForm,
-        teacherId: prev.teacherId,
+        teacherIds: prev.teacherIds,
+        teacherId: prev.teacherIds?.[0] || '',
       }));
     }
   };
@@ -710,6 +895,96 @@ const AdminDashboardPage = () => {
           <div className="card"><h3>{t('admin.registrations')}</h3><p className="admin-metric">{data.summary.registrations}</p></div>
         </section>
 
+        <section className="admin-section admin-schedule-top" ref={scheduleSectionRef}>
+          <div className="admin-section-heading">
+            <h2>{t('admin.teacherSchedule')}</h2>
+            <p>{selectedScheduleTeacher ? t('admin.teacherScheduleSubtitle', { teacher: selectedScheduleTeacher.name }) : t('admin.selectTeacherScheduleHelp')}</p>
+          </div>
+
+          <div className="admin-schedule-filters">
+            <div className="form-group">
+              <label>{t('admin.subject')}</label>
+              <select value={scheduleSubjectFilter} onChange={(e) => handleScheduleSubjectChange(e.target.value)}>
+                <option value="">{t('admin.allSubjects')}</option>
+                {scheduleSubjects.map((subject) => (
+                  <option key={subject} value={subject}>{subject}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>{t('admin.searchTeacher')}</label>
+              <input
+                type="search"
+                value={scheduleTeacherSearch}
+                onChange={(e) => setScheduleTeacherSearch(e.target.value)}
+                placeholder={t('admin.searchTeacherPlaceholder')}
+              />
+            </div>
+          </div>
+
+          <div className="admin-schedule-teacher-results">
+            {scheduleTeacherOptions.length > 0 ? (
+              scheduleTeacherOptions.map((teacher) => (
+                <button
+                  key={teacher.id}
+                  type="button"
+                  className={String(teacher.id) === String(selectedScheduleTeacherId) ? 'selected' : ''}
+                  onClick={() => setSelectedScheduleTeacherId(String(teacher.id))}
+                >
+                  <strong>{teacher.name}</strong>
+                  <span>{teacher.subject || t('admin.subjectNotSet')} - {t('admin.room')} {teacher.room || t('admin.notSet')}</span>
+                </button>
+              ))
+            ) : (
+              <div className="notification-card">{t('admin.noTeacherFound')}</div>
+            )}
+          </div>
+
+          {selectedScheduleTeacher ? (
+            <div className="admin-schedule-panel">
+              <div className="admin-schedule-summary">
+                <strong>{selectedScheduleTeacher.name}</strong>
+                <span>{selectedScheduleTeacher.subject || t('admin.subjectNotSet')} - {t('admin.room')} {selectedScheduleTeacher.room || t('admin.notSet')}</span>
+                <span>{t('admin.scheduleSlotCount', { count: selectedScheduleSlots.length })}</span>
+              </div>
+
+              {selectedScheduleSlots.length > 0 ? (
+                <div className="admin-schedule-list">
+                  {selectedScheduleSlots.map((slot) => {
+                    const registration = registrationsBySlotId.get(slot.id);
+                    const statusClass = registration ? 'booked' : (slot.is_booked ? 'busy' : 'available');
+                    const statusLabel = registration ? t('admin.booked') : (slot.is_booked ? t('myTimes.busy') : t('admin.available'));
+
+                    return (
+                      <div className="admin-schedule-slot" key={slot.id}>
+                        <div>
+                          <strong>{formatSlotDateTime(slot.start_time)}</strong>
+                          <span>{formatSlotTime(slot.start_time)} - {formatSlotTime(slot.end_time)}</span>
+                        </div>
+                        <span className={`slot-status ${statusClass}`}>{statusLabel}</span>
+                        {registration ? (
+                          <div className="admin-schedule-registration">
+                            <span><strong>{t('admin.parent')}:</strong> {registration.parent_name}</span>
+                            <span><strong>{t('parentDashboard.child')}:</strong> {registration.child_name} - {registration.child_class}</span>
+                            <span><strong>{t('registrations.contact')}:</strong> {registration.parent_email || registration.parent_phone || t('admin.noContact')}</span>
+                            {registration.note && <span><strong>{t('registrations.notes')}:</strong> {registration.note}</span>}
+                          </div>
+                        ) : (
+                          <span className="admin-schedule-empty">{slot.is_booked ? t('admin.noRegistrationBusy') : t('admin.noRegistrationAvailable')}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="notification-card">{t('admin.noTeacherScheduleSlots')}</div>
+              )}
+            </div>
+          ) : (
+            <div className="notification-card">{t('admin.selectTeacherScheduleHelp')}</div>
+          )}
+        </section>
+
         <section className="admin-section">
           <div className="admin-section-heading">
             <h2>{t('admin.registrationPeriod')}</h2>
@@ -773,21 +1048,54 @@ const AdminDashboardPage = () => {
           </div>
           <div className="admin-scheduler-layout">
             <div className="calendar-section">
-              <TeacherSearchPicker
-                label={t('admin.teacher')}
-                teachers={data.teachers}
-                selectedTeacherId={slotForm.teacherId}
-                searchValue={slotTeacherSearch}
-                isOpen={activeTeacherPicker === 'calendar'}
-                onSearchChange={(value) => {
-                  setActiveTeacherPicker('calendar');
-                  handleSlotTeacherSearchChange(value);
-                }}
-                onFocus={() => setActiveTeacherPicker('calendar')}
-                onSelect={handleSlotTeacherSelect}
-                onClose={closeTeacherPicker}
-                t={t}
-              />
+              <div className="admin-multi-teacher-picker">
+                <div className="form-group">
+                  <label>{t('admin.subject')}</label>
+                  <select value={slotSubjectFilter} onChange={(e) => handleSlotSubjectChange(e.target.value)}>
+                    <option value="">{t('admin.allSubjects')}</option>
+                    {slotSubjects.map((subject) => (
+                      <option key={subject} value={subject}>{subject}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>{t('admin.searchTeacher')}</label>
+                  <input
+                    type="search"
+                    value={slotTeacherSearch}
+                    onChange={(e) => handleSlotTeacherSearchChange(e.target.value)}
+                    placeholder={t('admin.searchTeacherPlaceholder')}
+                  />
+                </div>
+                <div className="admin-multi-teacher-actions">
+                  <button className="button-secondary" type="button" onClick={handleSelectAllSlotTeachers}>
+                    {t('admin.selectVisibleTeachers')}
+                  </button>
+                  <span>{t('admin.selectedTeachersCount', { count: slotForm.teacherIds?.length || 0 })}</span>
+                </div>
+                <div className="admin-multi-teacher-results">
+                  {slotTeacherOptions.length > 0 ? (
+                    slotTeacherOptions.map((teacher) => {
+                      const teacherId = String(teacher.id);
+                      const selected = slotForm.teacherIds?.includes(teacherId);
+
+                      return (
+                        <button
+                          key={teacher.id}
+                          type="button"
+                          className={selected ? 'selected' : ''}
+                          onClick={() => handleSlotTeacherSelect(teacher)}
+                        >
+                          <strong>{teacher.name}</strong>
+                          <span>{teacher.subject || t('admin.subjectNotSet')} - {t('admin.room')} {teacher.room || t('admin.notSet')}</span>
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="notification-card">{t('admin.noTeacherFound')}</div>
+                  )}
+                </div>
+              </div>
               <Calendar
                 value={selectedDate}
                 onChange={setSelectedDate}
@@ -807,10 +1115,15 @@ const AdminDashboardPage = () => {
                 <div className="slots-list admin-slots-list">
                   {selectedDateSlots.map((slot) => (
                     <div className="slot-item" key={slot.id}>
-                      <div className="slot-time">
-                        {formatSlotTime(slot.start_time)}
-                        {' - '}
-                        {formatSlotTime(slot.end_time)}
+                      <div>
+                        <div className="slot-time">
+                          {formatSlotTime(slot.start_time)}
+                          {' - '}
+                          {formatSlotTime(slot.end_time)}
+                        </div>
+                        <div className="slot-teacher-name">
+                          {teachersById.get(String(slot.teacher_id))?.name || t('admin.teacherNumber', { id: slot.teacher_id })}
+                        </div>
                       </div>
                       <div className={`slot-status ${slot.is_booked ? 'booked' : 'available'}`}>
                         {slot.is_booked ? t('admin.booked') : t('admin.available')}
@@ -826,21 +1139,14 @@ const AdminDashboardPage = () => {
             <div className="form-card create-slots admin-create-slots">
               <h3>{t('admin.createSlots')}</h3>
               <form className="form-grid" onSubmit={handleGenerateSlots}>
-                <TeacherSearchPicker
-                  label={t('admin.teacherForTheseSlots')}
-                  teachers={data.teachers}
-                  selectedTeacherId={slotForm.teacherId}
-                  searchValue={slotTeacherSearch}
-                  isOpen={activeTeacherPicker === 'form'}
-                  onSearchChange={(value) => {
-                    setActiveTeacherPicker('form');
-                    handleSlotTeacherSearchChange(value);
-                  }}
-                  onFocus={() => setActiveTeacherPicker('form')}
-                  onSelect={handleSlotTeacherSelect}
-                  onClose={closeTeacherPicker}
-                  t={t}
-                />
+                <div className="form-note admin-selected-teachers-note">
+                  <strong>{t('admin.teacherForTheseSlots')}:</strong>
+                  {selectedSlotTeachers.length > 0 ? (
+                    <span>{selectedSlotTeachers.map((teacher) => teacher.name).join(', ')}</span>
+                  ) : (
+                    <span>{t('admin.selectTeacherForSlots')}</span>
+                  )}
+                </div>
                 <div className="form-note">
                   {t('admin.selectedDate', { date: selectedDate.toLocaleDateString() })}
                 </div>
@@ -1007,11 +1313,18 @@ const AdminDashboardPage = () => {
                     onChange={() => handleSelectTeacher(teacher.id)}
                   />
                 </label>
-                <span>{teacher.name}</span>
+                <span>
+                  <button className="admin-link-button" type="button" onClick={() => handleViewTeacherSchedule(teacher.id)}>
+                    {teacher.name}
+                  </button>
+                </span>
                 <span>{teacher.subject || t('admin.notSet')}</span>
                 <span>{teacher.room || t('admin.notSet')}</span>
                 <span>{teacher.email}</span>
-                <button className="button-secondary" onClick={() => runAction(() => api.delete(`/admin/teachers/${teacher.id}`), t('admin.teacherDeleted'))}>{t('admin.delete')}</button>
+                <div className="admin-row-actions">
+                  <button className="button-secondary" type="button" onClick={() => handleViewTeacherSchedule(teacher.id)}>{t('admin.viewSchedule')}</button>
+                  <button className="button-secondary" type="button" onClick={() => runAction(() => api.delete(`/admin/teachers/${teacher.id}`), t('admin.teacherDeleted'))}>{t('admin.delete')}</button>
+                </div>
               </div>
             ))}
           </div>

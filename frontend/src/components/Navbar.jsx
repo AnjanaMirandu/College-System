@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
+import didzdvarioLogo from '../assets/didzdvario-logo.svg';
 
 const Navbar = () => {
   const { t } = useTranslation();
@@ -23,8 +24,12 @@ const Navbar = () => {
 
   return (
     <nav className="navbar">
-      <div className="nav-brand">
-        <Link to="/" className="brand-link">Didždvario</Link>
+      <div className="nav-left">
+        <div className="nav-brand">
+          <Link to="/" className="brand-link" aria-label="Didždvario gimnazija home">
+            <img className="brand-logo" src={didzdvarioLogo} alt="Didždvario gimnazija" />
+          </Link>
+        </div>
       </div>
       <div className="nav-group">
         <Link to="/">{t('common.home')}</Link>

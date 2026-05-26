@@ -23,6 +23,24 @@ const getActiveRegistrationsForSlots = async (slotIds) => {
   return (data || []).filter((registration) => registration.status !== 'cancelled');
 };
 
+const compareRegistrationSlotTimes = (left, right) => {
+  const leftStart = left?.slots?.start_time || '';
+  const rightStart = right?.slots?.start_time || '';
+
+  if (leftStart !== rightStart) {
+    return leftStart.localeCompare(rightStart);
+  }
+
+  const leftEnd = left?.slots?.end_time || '';
+  const rightEnd = right?.slots?.end_time || '';
+
+  if (leftEnd !== rightEnd) {
+    return leftEnd.localeCompare(rightEnd);
+  }
+
+  return Number(left?.id || 0) - Number(right?.id || 0);
+};
+
 const generateSlots = async (req, res) => {
   if (!req.user || req.user.type !== 'teacher') {
     return res.status(403).json({ message: 'Teacher access required' });
@@ -120,7 +138,7 @@ const getRegistrations = async (req, res) => {
     return res.status(500).json({ message: 'Error fetching registrations' });
   }
 
-  res.json(data);
+  res.json([...(data || [])].sort(compareRegistrationSlotTimes));
 };
 
 const cancelRegistration = async (req, res) => {

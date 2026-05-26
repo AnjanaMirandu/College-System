@@ -1,12 +1,14 @@
 const supabase = require('../config/db');
 const { readRegistrationSettings } = require('../services/registrationSettingsStore');
+const { processUpcomingMeetingReminders } = require('../services/meetingReminderService');
+const { assertValidEmailForDelivery } = require('../utils/emailValidation');
 
 const isMissingRegistrationSettingsTable = (error) => (
   error?.message?.includes("Could not find the table 'public.registration_settings'")
   || error?.message?.includes('relation "public.registration_settings" does not exist')
 );
 
-const getActiveRegistrationSettings = async () => {
+const getRegistrationSettings = async () => {
   const { data, error } = await supabase
     .from('registration_settings')
     .select('is_open, opens_at, closes_at')
@@ -16,42 +18,85 @@ const getActiveRegistrationSettings = async () => {
   if (error) {
     if (isMissingRegistrationSettingsTable(error)) {
       const settings = await readRegistrationSettings();
-      const now = new Date();
-      const opensAt = settings?.opens_at ? new Date(settings.opens_at) : null;
-      const closesAt = settings?.closes_at ? new Date(settings.closes_at) : null;
-      const withinDates = (!opensAt || opensAt <= now) && (!closesAt || closesAt >= now);
 
-      return { isActive: Boolean(settings?.is_open && withinDates), error: null };
+      return { settings, error: null };
     }
 
-    return { isActive: false, error };
+    return { settings: null, error };
   }
 
-  const now = new Date();
-  const opensAt = data?.opens_at ? new Date(data.opens_at) : null;
-  const closesAt = data?.closes_at ? new Date(data.closes_at) : null;
-  const withinDates = (!opensAt || opensAt <= now) && (!closesAt || closesAt >= now);
+  return { settings: data, error: null };
+};
 
-  return {
-    isActive: Boolean(data?.is_open && withinDates),
-    error: null,
-  };
+const toVilniusDateTimeLocal = (date = new Date()) => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Vilnius',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}T${value.hour}:${value.minute}`;
+};
+
+const toComparableDateTimeLocal = (value) => {
+  if (!value) {
+    return '';
+  }
+
+  const stringValue = String(value);
+  if (/[zZ]|[+-]\d{2}:\d{2}$/.test(stringValue)) {
+    const date = new Date(stringValue);
+    return Number.isNaN(date.getTime()) ? '' : toVilniusDateTimeLocal(date);
+  }
+
+  return stringValue.slice(0, 16);
+};
+
+const isRegistrationOpenNow = (settings) => {
+  if (!settings?.is_open) {
+    return false;
+  }
+
+  const now = toVilniusDateTimeLocal();
+  const opensAt = toComparableDateTimeLocal(settings.opens_at);
+  const closesAt = toComparableDateTimeLocal(settings.closes_at);
+
+  return (!opensAt || opensAt <= now) && (!closesAt || closesAt >= now);
 };
 
 const createRegistration = async (req, res) => {
   const { slotIds, parentName, parentEmail, parentPhone, childName, childClass, note } = req.body;
   const requestedIds = Array.isArray(slotIds) ? slotIds : [slotIds];
+  const normalizedParentEmail = String(parentEmail || '').trim().toLowerCase();
+  const normalizedParentPhone = String(parentPhone || '').trim();
 
-  const registrationSettings = await getActiveRegistrationSettings();
+  const registrationSettings = await getRegistrationSettings();
   if (registrationSettings.error) {
     return res.status(500).json({ message: 'Unable to check registration period' });
   }
-  if (!registrationSettings.isActive) {
+  if (!isRegistrationOpenNow(registrationSettings.settings)) {
     return res.status(403).json({ message: 'Registration is currently closed by the administrator.' });
   }
 
   if (!requestedIds.length || requestedIds.length > 2) {
     return res.status(400).json({ message: 'Please select one or two slots.' });
+  }
+
+  if (!normalizedParentEmail && !normalizedParentPhone) {
+    return res.status(400).json({ message: 'Parent email or phone is required.' });
+  }
+
+  if (normalizedParentEmail) {
+    try {
+      await assertValidEmailForDelivery(normalizedParentEmail);
+    } catch (emailError) {
+      return res.status(emailError.statusCode || 400).json({ message: emailError.message });
+    }
   }
 
   const { data: slots, error: slotError } = await supabase
@@ -73,8 +118,8 @@ const createRegistration = async (req, res) => {
     slot_id: slot.id,
     teacher_id: slot.teacher_id,
     parent_name: parentName,
-    parent_email: parentEmail,
-    parent_phone: parentPhone,
+    parent_email: normalizedParentEmail || null,
+    parent_phone: normalizedParentPhone || null,
     child_name: childName,
     child_class: childClass,
     note,
@@ -96,6 +141,10 @@ const createRegistration = async (req, res) => {
   if (slotUpdateError) {
     return res.status(500).json({ message: 'Error updating booked slots' });
   }
+
+  processUpcomingMeetingReminders().catch((reminderError) => {
+    console.error('Meeting reminder check after booking failed:', reminderError.message);
+  });
 
   res.json({ message: 'Successfully registered' });
 };

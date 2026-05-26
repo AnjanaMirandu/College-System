@@ -54,3 +54,5 @@ CREATE TABLE IF NOT EXISTS registration_settings (
 INSERT INTO registration_settings (id, is_open)
 VALUES (1, FALSE)
 ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ;

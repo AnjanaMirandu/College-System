@@ -1,6 +1,12 @@
 import axios from 'axios';
 
-const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const defaultApiBaseUrl = (
+  typeof window !== 'undefined' && window.location.hostname === 'localhost'
+    ? 'http://localhost:5000/api'
+    : 'https://backend-anjanamirandus-projects.vercel.app/api'
+);
+
+const apiBaseUrl = import.meta.env.VITE_API_URL || defaultApiBaseUrl;
 
 const api = axios.create({
   baseURL: apiBaseUrl,

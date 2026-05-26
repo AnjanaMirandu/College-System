@@ -5,6 +5,21 @@ import api from '../api/axios';
 import Navbar from '../components/Navbar';
 import { formatSlotTime } from '../utils/timeUtils';
 
+const getSlotDateTime = (slot, key) => {
+  const value = slot?.[key];
+  const timestamp = value ? new Date(String(value).replace(' ', 'T')).getTime() : Number.POSITIVE_INFINITY;
+
+  return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
+};
+
+const sortSlotsByTime = (items = []) => (
+  [...items].sort((left, right) => (
+    getSlotDateTime(left, 'start_time') - getSlotDateTime(right, 'start_time')
+    || getSlotDateTime(left, 'end_time') - getSlotDateTime(right, 'end_time')
+    || Number(left?.id || 0) - Number(right?.id || 0)
+  ))
+);
+
 const TeacherSlotsPage = () => {
   const { t } = useTranslation();
   const { teacherId } = useParams();
@@ -16,7 +31,7 @@ const TeacherSlotsPage = () => {
   useEffect(() => {
     api.get(`/teachers/${teacherId}/slots`)
       .then((res) => {
-        setSlots(res.data);
+        setSlots(sortSlotsByTime(res.data));
         setError('');
       })
       .catch((err) => {
@@ -76,7 +91,7 @@ const TeacherSlotsPage = () => {
               alert(t('teacherSlots.selectSlotAlert'));
               return;
             }
-            const selectedSlotDetails = slots.filter((slot) => selectedSlots.includes(slot.id));
+            const selectedSlotDetails = sortSlotsByTime(slots.filter((slot) => selectedSlots.includes(slot.id)));
             navigate('/book', { state: { slotIds: selectedSlots, selectedSlotDetails } });
           }} disabled={selectedSlots.length === 0}>
             {t('teacherSlots.bookSelected')}

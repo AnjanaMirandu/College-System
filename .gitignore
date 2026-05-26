@@ -6,6 +6,8 @@ frontend/.env
 
 build/
 frontend/build/
+dist/
+frontend/dist/
 
 *.log
 *.err.log

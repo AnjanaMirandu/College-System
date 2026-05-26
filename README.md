@@ -151,15 +151,15 @@ Important Vercel settings:
 
 - Root directory: `frontend`
 - Build command: `npm run build`
-- Output directory: `build`
+- Output directory: `dist`
 
 Frontend environment variable:
 
 ```env
-REACT_APP_API_URL=https://your-backend-domain.vercel.app/api
+VITE_API_URL=https://your-backend-domain.vercel.app/api
 ```
 
-If the backend URL changes, update `REACT_APP_API_URL` and redeploy the frontend.
+If the backend URL changes, update `VITE_API_URL` and redeploy the frontend.
 
 ## Test Login
 
