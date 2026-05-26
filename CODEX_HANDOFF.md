@@ -1,12 +1,56 @@
 # Codex Handoff — College System Vercel Domain
 
-Anji wants the College System frontend to use this as the single stable public URL:
+Anji asked to use this old Vercel deployment URL:
 
 ```text
-https://college-system-anjanamirandu.vercel.app
+https://frontend-ex19w842f-anjanamirandus-projects.vercel.app/
 ```
 
-## Current project location
+Important: Vercel rejects this as a reusable domain/alias because it is an immutable deployment snapshot URL.
+
+Verified Vercel error:
+
+```text
+Error: The chosen alias "frontend-ex19w842f-anjanamirandus-projects.vercel.app" is a deployment URL. (403)
+```
+
+So do not attempt to make that URL the project domain. It cannot be reassigned to newer builds.
+
+## Current correct Vercel production domains
+
+Use the current Vercel project production domain:
+
+```text
+https://frontend-anjanamirandus-projects.vercel.app/
+```
+
+Also connected and working as a clean stable domain:
+
+```text
+https://college-system-anjanamirandu.vercel.app/
+```
+
+Both point to the latest Vite production build.
+
+## Current synced commit
+
+GitHub `main` and Vercel production are synced at:
+
+```text
+66599d2 fix: sync Vite frontend and Vercel deployment config
+```
+
+Vercel build log confirms:
+
+```text
+Cloning github.com/AnjanaMirandu/College-System (Branch: main, Commit: 66599d2)
+Running "install" command: cd frontend && npm ci
+found 0 vulnerabilities
+vite build
+✓ built successfully
+```
+
+## Project location
 
 Work in the Windows/VS Code folder:
 
@@ -32,11 +76,11 @@ Backend folder:
 backend
 ```
 
-## Important frontend state
+## Frontend build state
 
-The frontend was migrated from Create React App to Vite to remove Vercel deprecated-package warnings from `react-scripts`.
+The frontend uses Vite, not Create React App.
 
-Use these frontend commands from `frontend/`:
+Frontend commands from `frontend/`:
 
 ```bash
 npm install
@@ -44,69 +88,27 @@ npm run build
 npx vercel deploy --prod --yes
 ```
 
-Current Vite config:
+Config:
 
 - Build command: `npm run build`
 - Output directory: `dist`
 - SPA rewrite: all routes to `/index.html`
-- Env var must be `VITE_API_URL`, not `REACT_APP_API_URL`
-
-## Required frontend URL policy
-
-Treat this as the only intended/public frontend URL:
-
-```text
-https://college-system-anjanamirandu.vercel.app
-```
-
-Do not promote old immutable deployment URLs such as:
-
-```text
-https://frontend-ex19w842f-anjanamirandus-projects.vercel.app
-https://frontend-fhp8ushmd-anjanamirandus-projects.vercel.app
-```
-
-Those are Vercel deployment snapshots and should not be used as the user-facing URL.
-
-## Backend/API connection
-
-The frontend API base should come from:
-
-```text
-VITE_API_URL
-```
-
-Expected value format:
-
-```text
-https://<backend-vercel-domain>/api
-```
-
-The local fallback in `frontend/src/api/axios.js` exists, but production should use Vercel env variable `VITE_API_URL`.
-
-## What Zoro is doing
-
-Zoro is attempting to attach this Vercel domain to the frontend project:
-
-```text
-college-system-anjanamirandu.vercel.app
-```
-
-If it is successfully connected, future production deploys should be verified at that URL.
+- Env var: `VITE_API_URL`, not `REACT_APP_API_URL`
 
 ## Verification checklist
 
-After changes/deployments, verify:
+After changes, verify:
 
 ```bash
 cd frontend
 npm run build
 ```
 
-Then confirm the live URL returns HTTP 200:
+Then confirm the live URL returns HTTP 200 and detects Vite assets:
 
 ```text
-https://college-system-anjanamirandu.vercel.app
+https://frontend-anjanamirandus-projects.vercel.app/
+https://college-system-anjanamirandu.vercel.app/
 ```
 
-Also verify the site can call the backend API using the configured `VITE_API_URL`.
+Do not promote immutable deployment URLs like `frontend-ex19w842f...` as the main project URL.
