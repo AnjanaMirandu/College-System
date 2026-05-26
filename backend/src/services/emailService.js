@@ -82,7 +82,7 @@ const shouldRetryEmailError = (error) => {
 const getFrontendUrl = () => (
   process.env.FRONTEND_URL
   || process.env.CLIENT_URL
-  || 'https://college-system-anjanamirandu.vercel.app'
+  || 'https://frontend-ex19w842f-anjanamirandus-projects.vercel.app'
 ).replace(/\/$/, '');
 
 const normalizeLanguage = (language) => (String(language || '').toLowerCase().startsWith('lt') ? 'lt' : 'en');

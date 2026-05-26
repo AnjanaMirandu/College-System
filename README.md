@@ -51,8 +51,8 @@ SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 JWT_SECRET=your_secret_key
-CLIENT_URL=https://college-system-anjanamirandu.vercel.app
-FRONTEND_URL=https://college-system-anjanamirandu.vercel.app
+CLIENT_URL=https://frontend-ex19w842f-anjanamirandus-projects.vercel.app
+FRONTEND_URL=https://frontend-ex19w842f-anjanamirandus-projects.vercel.app
 ```
 
 The backend should run on:
@@ -78,7 +78,7 @@ It should show:
 The frontend is deployed on Vercel. The single public frontend URL is:
 
 ```text
-https://college-system-anjanamirandu.vercel.app
+https://frontend-ex19w842f-anjanamirandus-projects.vercel.app
 ```
 
 If you need to run the frontend only for development, use:
@@ -109,7 +109,7 @@ backend/db/schema.sql
 
 This project is deployed as two separate Vercel projects.
 
-For the live version, use `https://college-system-anjanamirandu.vercel.app`, not `localhost` or old Vercel deployment snapshot URLs.
+For the live version, use `https://frontend-ex19w842f-anjanamirandus-projects.vercel.app`, not `localhost`.
 
 ### Backend Deployment
 
@@ -129,8 +129,8 @@ SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 JWT_SECRET=your_secret_key
-CLIENT_URL=https://college-system-anjanamirandu.vercel.app
-FRONTEND_URL=https://college-system-anjanamirandu.vercel.app
+CLIENT_URL=https://frontend-ex19w842f-anjanamirandus-projects.vercel.app
+FRONTEND_URL=https://frontend-ex19w842f-anjanamirandus-projects.vercel.app
 ```
 
 For Gmail email sending:
