@@ -12,6 +12,7 @@ const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')
 const isAllowedVercelFrontend = (origin = '') => (
   /^https:\/\/frontend-[a-z0-9-]+-anjanamirandus-projects\.vercel\.app$/i.test(origin)
   || /^https:\/\/frontend-[a-z0-9-]+\.vercel\.app$/i.test(origin)
+  || origin === 'https://college-system-anjanamirandu.vercel.app'
   || origin === 'https://frontend-anjanamirandus-projects.vercel.app'
   || origin === 'https://frontend-git-main-anjanamirandus-projects.vercel.app'
   || origin === 'https://frontend-kvfnzbeho-anjanamirandus-projects.vercel.app'
