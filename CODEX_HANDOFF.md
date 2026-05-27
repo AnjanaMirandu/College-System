@@ -21,23 +21,23 @@ So the correct fix is to keep the old snapshot's source code in GitHub and deplo
 
 ## Current Frontend Source
 
-The frontend has intentionally been restored to the old Create React App source that matches the snapshot design.
+The frontend deploy intentionally mirrors the old built snapshot files from `frontend/snapshot` so the live site matches the frozen Vercel URL exactly.
 
 Frontend commands from `frontend/`:
 
 ```bash
-npm ci --legacy-peer-deps
+npm ci
 npm run build
 ```
 
 Build config:
 
-- Framework: Create React App
+- Framework: Other/static
 - Build command: `npm run build`
 - Output directory: `build`
 - Root deployment config output directory: `frontend/build`
 - SPA rewrite: all routes to `/index.html`
-- API env var: `REACT_APP_API_URL`
+- API URL: already embedded in the mirrored snapshot bundle
 
 Do not change this project back to Vite unless Anji explicitly asks for a redesign/new version.
 

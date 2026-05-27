@@ -155,23 +155,17 @@ https://your-backend-domain.vercel.app/health
 
 ### Frontend Deployment
 
-Deploy the `frontend` folder as the frontend project. The frontend intentionally uses Create React App so it matches the old Vercel snapshot design.
+Deploy the `frontend` folder as the frontend project. The frontend intentionally deploys the mirrored old Vercel snapshot from `frontend/snapshot` so it matches the requested old website exactly.
 
 Important Vercel settings:
 
 - Root directory: `frontend`
-- Framework preset: Create React App
-- Install command: `npm ci --legacy-peer-deps`
+- Framework preset: Other
+- Install command: `npm ci`
 - Build command: `npm run build`
 - Output directory: `build`
 
-Frontend environment variable:
-
-```env
-REACT_APP_API_URL=https://your-backend-domain.vercel.app/api
-```
-
-If the backend URL changes, update `REACT_APP_API_URL` and redeploy the frontend.
+The mirrored snapshot already contains the production backend API URL. No frontend API environment variable is required for this exact snapshot deployment.
 
 ## Test Login
 

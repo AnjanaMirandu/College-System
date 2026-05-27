@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 96" role="img" aria-labelledby="title desc">
+  <title id="title">Didždvario gimnazija</title>
+  <desc id="desc">Didždvario gimnazija logo with school building mark.</desc>
+  <defs>
+    <linearGradient id="crest" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff7d7"/>
+      <stop offset="1" stop-color="#d6ab2b"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <circle cx="48" cy="48" r="36" fill="rgba(255,255,255,0.06)" stroke="url(#crest)" stroke-width="3"/>
+    <path d="M23 66h50" stroke="#fffdf4" stroke-width="3" stroke-linecap="round"/>
+    <path d="M29 63V42l19-13 19 13v21" stroke="#fffdf4" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M36 63V45m12 18V42m12 21V45" stroke="#fffdf4" stroke-width="3" stroke-linecap="round"/>
+    <path d="M25 42h46L48 26 25 42Z" fill="rgba(214,171,43,0.32)" stroke="#fffdf4" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M16 20c9-8 19-12 32-12s23 4 32 12" stroke="#fffdf4" stroke-width="2" stroke-linecap="round" opacity=".76"/>
+    <text x="101" y="42" fill="#fffdf4" font-family="Georgia, 'Times New Roman', serif" font-size="27" font-weight="700" letter-spacing="1.2">
+      DIDŽDVARIO
+    </text>
+    <text x="101" y="70" fill="#f4e4aa" font-family="Georgia, 'Times New Roman', serif" font-size="26" letter-spacing=".9">
+      GIMNAZIJA
+    </text>
+  </g>
+</svg>
