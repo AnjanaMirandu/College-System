@@ -4,14 +4,23 @@ require('dotenv').config();
 
 const app = express();
 
-const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')
-  .split(',')
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  'http://localhost:3000',
+  'https://college-system-anjanamirandu.vercel.app',
+  'https://frontend-ex19w842f-anjanamirandus-projects.vercel.app',
+]
+  .filter(Boolean)
+  .flatMap((value) => String(value).split(','))
   .map((origin) => origin.trim())
+  .map((origin) => origin.replace(/\/$/, ''))
   .filter(Boolean);
 
 const isAllowedVercelFrontend = (origin = '') => (
   /^https:\/\/frontend-[a-z0-9-]+-anjanamirandus-projects\.vercel\.app$/i.test(origin)
   || /^https:\/\/frontend-[a-z0-9-]+\.vercel\.app$/i.test(origin)
+  || origin === 'https://college-system-anjanamirandu.vercel.app'
   || origin === 'https://frontend-ex19w842f-anjanamirandus-projects.vercel.app'
   || origin === 'https://frontend-git-main-anjanamirandus-projects.vercel.app'
   || origin === 'https://frontend-kvfnzbeho-anjanamirandus-projects.vercel.app'
@@ -19,7 +28,9 @@ const isAllowedVercelFrontend = (origin = '') => (
 
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin) || isAllowedVercelFrontend(origin)) {
+    const normalizedOrigin = String(origin || '').replace(/\/$/, '');
+
+    if (!origin || allowedOrigins.includes(normalizedOrigin) || isAllowedVercelFrontend(normalizedOrigin)) {
       callback(null, true);
       return;
     }

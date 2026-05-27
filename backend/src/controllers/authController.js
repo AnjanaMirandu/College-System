@@ -53,7 +53,7 @@ const isMissingParentChildColumns = (error) => (
 const getFrontendUrl = () => (
   process.env.FRONTEND_URL
   || process.env.CLIENT_URL
-  || 'https://frontend-ex19w842f-anjanamirandus-projects.vercel.app'
+  || 'https://college-system-anjanamirandu.vercel.app'
 ).replace(/\/$/, '');
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
