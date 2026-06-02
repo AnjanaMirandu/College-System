@@ -1,6 +1,6 @@
-# Codex Handoff - College System Frontend
+# Project Deployment Notes - College System Frontend
 
-Anji wants the live frontend to match this old Vercel deployment snapshot exactly:
+The live frontend should match this old Vercel deployment snapshot exactly:
 
 ```text
 https://frontend-ex19w842f-anjanamirandus-projects.vercel.app/
@@ -39,7 +39,7 @@ Build config:
 - SPA rewrite: all routes to `/index.html`
 - API URL: already embedded in the mirrored snapshot bundle
 
-Do not change this project back to Vite unless Anji explicitly asks for a redesign/new version.
+Do not change this project back to Vite unless a redesign or new frontend version is explicitly requested.
 
 ## Public URL Guidance
 
