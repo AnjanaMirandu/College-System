@@ -1,5 +1,8 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 require('dotenv').config();
 
 const app = express();
@@ -7,6 +10,7 @@ const app = express();
 const allowedOrigins = [
   process.env.CLIENT_URL,
   process.env.FRONTEND_URL,
+  'https://registracija.didzdvaris.lt',
   'http://localhost:3000',
   'https://college-system-anjanamirandu.vercel.app',
   'https://frontend-ex19w842f-anjanamirandus-projects.vercel.app',
@@ -20,6 +24,7 @@ const allowedOrigins = [
 const isAllowedVercelFrontend = (origin = '') => (
   /^https:\/\/frontend-[a-z0-9-]+-anjanamirandus-projects\.vercel\.app$/i.test(origin)
   || /^https:\/\/frontend-[a-z0-9-]+\.vercel\.app$/i.test(origin)
+  || origin === 'https://registracija.didzdvaris.lt'
   || origin === 'https://college-system-anjanamirandu.vercel.app'
   || origin === 'https://frontend-ex19w842f-anjanamirandus-projects.vercel.app'
   || origin === 'https://frontend-git-main-anjanamirandus-projects.vercel.app'
@@ -53,13 +58,22 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.use('/api/auth', authRoutes);
-app.use('/api/teacher', teacherRoutes);
-app.use('/api/teachers', slotRoutes); // for /api/teachers/:id/slots
-app.use('/api', registrationRoutes); // for /api/registrations
-app.use('/api/parent', parentRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api', reminderRoutes);
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+const mountApiRoutes = (basePath) => {
+  app.use(`${basePath}/auth`, authRoutes);
+  app.use(`${basePath}/teacher`, teacherRoutes);
+  app.use(`${basePath}/teachers`, slotRoutes); // for /teachers/:id/slots
+  app.use(basePath || '/', registrationRoutes); // for /registrations
+  app.use(`${basePath}/parent`, parentRoutes);
+  app.use(`${basePath}/admin`, adminRoutes);
+  app.use(basePath || '/', reminderRoutes);
+};
+
+mountApiRoutes('/api');
+mountApiRoutes('');
 
 const PORT = process.env.PORT || 5000;
 

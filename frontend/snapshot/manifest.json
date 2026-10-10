@@ -1,0 +1,8 @@
+{
+  "short_name": "Registracija",
+  "name": "Didzdvaris Appointment Booking",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#0f3d5e",
+  "background_color": "#ffffff"
+}
