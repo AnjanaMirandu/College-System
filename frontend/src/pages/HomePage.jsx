@@ -1,4 +1,5 @@
 import Navbar from '../components/Navbar';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import heroImage from '../assets/admiral-hero-campus.png';
 
@@ -28,11 +29,11 @@ const HomePage = () => {
             </p>
             <div className="hero-actions">
               {canBrowseTeachers && (
-                <a className="button-primary" href="/teachers">{t('home.browseTeachers')}</a>
+                <Link className="button-primary" to="/teachers">{t('home.browseTeachers')}</Link>
               )}
               <div className="hero-login-actions">
-                <a className="button-secondary" href="/teacher/login">{t('common.teacherLogin')}</a>
-                <a className="button-secondary" href="/parent/login">{t('common.parentLogin')}</a>
+                <Link className="button-secondary" to="/teacher/login">{t('common.teacherLogin')}</Link>
+                <Link className="button-secondary" to="/parent/login">{t('common.parentLogin')}</Link>
               </div>
             </div>
           </div>

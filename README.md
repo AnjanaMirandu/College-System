@@ -165,7 +165,9 @@ Important Vercel settings:
 - Build command: `npm run build`
 - Output directory: `build`
 
-The mirrored snapshot already contains the production backend API URL. No frontend API environment variable is required for this exact snapshot deployment.
+The build command rewrites the frontend API base URL to `/api` unless `REACT_APP_API_URL` is explicitly set. For a same-domain deployment such as `registracija.didzdvaris.lt`, leave `REACT_APP_API_URL` unset and make sure `/api` is proxied to the backend.
+
+If the built frontend is hosted on Apache, upload the generated `build/.htaccess` file too. It is required so direct visits and refreshes on React routes such as `/parent/login`, `/teacher/login`, and `/admin/login` return `index.html` instead of Apache's 404 page. Apache must have `mod_rewrite` enabled and allow `.htaccess` overrides for the site directory.
 
 ## Test Login
 

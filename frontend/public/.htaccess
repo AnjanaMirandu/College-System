@@ -1,0 +1,12 @@
+RewriteEngine On
+
+# Let Apache serve real files and folders normally.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Keep API calls on /api so they can be handled by the backend/proxy.
+RewriteRule ^api(/.*)?$ - [L]
+
+# React Router fallback for direct visits and page refreshes.
+RewriteRule ^ index.html [L]

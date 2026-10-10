@@ -37,7 +37,15 @@ Build config:
 - Output directory: `build`
 - Root deployment config output directory: `frontend/build`
 - SPA rewrite: all routes to `/index.html`
-- API URL: already embedded in the mirrored snapshot bundle
+- API URL: defaults to `/api`; set `REACT_APP_API_URL` only when the backend is on a different origin
+
+## Apache Hosting Notes
+
+For `registracija.didzdvaris.lt`, the frontend should call the backend through same-origin `/api` URLs. The frontend build command already rewrites the old snapshot API URL to `/api`.
+
+When uploading the static frontend to Apache, include the hidden `build/.htaccess` file. It keeps `/api` requests available for the backend/proxy and rewrites React routes such as `/parent/login`, `/teacher/login`, and `/admin/login` to `index.html` so page refreshes do not return Apache 404 pages.
+
+If refreshes still show Apache's Not Found page after uploading, enable `mod_rewrite` and allow `.htaccess` overrides for the website directory in the Apache virtual host.
 
 Do not change this project back to Vite unless a redesign or new frontend version is explicitly requested.
 
